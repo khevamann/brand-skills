@@ -1,6 +1,6 @@
 ---
 name: craft-cms
-description: Use when reading, searching, or auditing content on the Kirby school website (Craft CMS) — looking up a page, finding where a piece of copy lives, reading a page's text and HTML, listing news/events/staff entries, checking what a field contains, or exporting page content to work on elsewhere. Read-only: it cannot change anything in the CMS.
+description: Use when reading, searching, auditing or planning changes to the Kirby school website (Craft CMS) — looking up a page, finding where a piece of copy lives, reading a page's text and HTML, taking stock of the block vocabulary before a design change, exporting the whole site to reason about it, or briefing a design tool. Read-only: it cannot change anything in the CMS.
 ---
 
 # Craft CMS — read the website's content
@@ -33,6 +33,8 @@ Changes happen in the Craft control panel.
 | `$CRAFT page <id>` | **A page's copy**, walking the nested block tree |
 | `$CRAFT page <id> --raw` | The same as JSON, with the query used |
 | `$CRAFT entry <id>` | One entry's own fields |
+| `$CRAFT blocks` | **The block vocabulary** — types, usage, which fields hold copy |
+| `$CRAFT export --out DIR` | The whole site to disk: block trees, rendered HTML, inventory |
 | `$CRAFT drafts <id>` | Drafts of an entry |
 | `$CRAFT query <file>` / `--q "..."` | Any read query |
 | `$CRAFT schema [Type]` | Query root fields, or one type's fields |
@@ -54,6 +56,34 @@ precisely: *"block #5665, field `richText_Text`"*.
 Use `craft entry <id>` only for an entry's own fields (title, slug, dates, status).
 For news, events and other simple entries that is usually all there is.
 
+## Before planning any change
+
+Run `$CRAFT blocks`. It walks every page and reports the 30 block types actually in use,
+which of their fields hold copy rather than presentation settings, and an example value
+for each. That is the vocabulary any design work has to stay inside — the front end is a
+separate Nuxt app that can only render block types it has components for.
+
+Three constraints that come up every time:
+
+- **A new block type is not possible from here.** Craft's GraphQL API cannot touch the
+  content model at all — no mutation creates an entry type or a field. It needs a Craft
+  settings change *and* a Nuxt component, both of which are Digistorm's.
+- **`ds_EmbedBlock.embed_Code` stores raw HTML and `<script>` verbatim.** It is the
+  escape hatch for a section the vocabulary cannot express. It renders client-side only.
+- **Blocks cannot be shared between pages** — each has a single `ownerId`. A reusable
+  pattern is a convention, not an object.
+
+`references/design-handoff.md` has the full briefing format. Read it before handing work
+to a design tool, and read `references/learnings.md` for what broke last time.
+
+## Taking stock of the whole site
+
+`$CRAFT export --out site-export` writes every page's block tree as JSON plus the
+rendered HTML, with an inventory. Use it when a question spans pages: which pages use a
+pattern, where placeholder copy survives, what a design change would have to respect.
+
+Embed blocks render client-side, so their content is in the JSON but not the saved HTML.
+
 ## Rules
 
 - **Never fabricate an id, handle, or field name.** Introspect first:
@@ -66,6 +96,9 @@ For news, events and other simple entries that is usually all there is.
   richText_Text` is not.
 - **If a command exits `BLOCKED`,** the request is a write. Report that; do not look
   for another route.
+- **After any round trip through a design tool or the control panel, append to
+  `references/learnings.md`.** What worked, what broke, and the concrete change for next
+  time. That log is how this gets faster; skipping it wastes the iteration.
 
 ## Reference
 
@@ -73,5 +106,8 @@ For news, events and other simple entries that is usually all there is.
   the two-level block nesting, field naming, and where the copy really lives.
 - `references/craft-graphql-api.md` — the Craft GraphQL API: endpoint, query
   arguments, structured content, and the errors Craft refuses to explain.
+- `references/design-handoff.md` — briefing a design tool, and the edit-manifest format
+  that makes the result applicable.
+- `references/learnings.md` — the running log. Read before, append after.
 
 Read the API reference before writing any non-trivial `craft query` document.

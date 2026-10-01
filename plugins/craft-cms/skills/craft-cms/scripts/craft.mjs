@@ -8,7 +8,8 @@
 import { readFileSync } from 'node:fs';
 import { graphql, ENDPOINT, CraftError } from './lib/client.mjs';
 import { assertReadOnly, isDenied, GuardError } from './lib/guard.mjs';
-import { rootFields, typeFields, possibleTypes, renderType, namedType, needsArgs } from './lib/introspect.mjs';
+import { rootFields, typeFields, renderType, namedType, needsArgs } from './lib/introspect.mjs';
+import { cachedTypeFields, contentFieldsOf, fetchPageTree, flattenBlocks } from './lib/page.mjs';
 
 const USAGE = `craft — read-only access to the Craft CMS website
 
@@ -27,6 +28,9 @@ READ
       --raw                          Full JSON instead of rendered text
       --depth <n>                    How far to follow nesting (default 3)
   craft entry <id>                   One entry's own fields
+  craft blocks                       The block vocabulary: types, usage, which fields hold copy
+  craft export [--out DIR]           Whole site to disk: block trees, rendered HTML, inventory
+      --no-html                      Skip the rendered HTML fetches
   craft query <file|->               Run a GraphQL query from a file or stdin
   craft query --q "{ ping }"         Run an inline GraphQL query
   craft schema [TypeName]            Query root fields, or one type's fields
@@ -170,104 +174,19 @@ async function cmdDrafts(entryId, flags) {
 
 // ------------------------------------------------- page content walking
 
-const typeCache = new Map();
-async function cachedTypeFields(name) {
-  if (!typeCache.has(name)) typeCache.set(name, await typeFields(name));
-  return typeCache.get(name);
-}
-
-/**
- * Build an inline-fragment selection for one block type, recursing into any
- * nested-entry fields it has. Depth is bounded because these trees can nest.
- */
-async function blockSelection(typeName, depth) {
-  const type = await cachedTypeFields(typeName);
-  if (!type) return null;
-
-  const leaves = ['__typename', 'id', 'title'];
-  const nestedParts = [];
-
-  for (const f of type.fields ?? []) {
-    if (needsArgs(f) || leaves.includes(f.name)) continue;
-    const named = namedType(f.type);
-    if (named.kind === 'SCALAR' || named.kind === 'ENUM') {
-      // SEOmatic lies about this field's type and poisons the whole selection.
-      if (f.name === 'seomatic') continue;
-      leaves.push(f.name);
-    } else if (depth > 0 && /_MatrixField$/.test(named.name ?? '')) {
-      const inner = await fieldSelection(named.name, depth - 1);
-      if (inner) nestedParts.push(`${f.name} { ${inner} }`);
-    }
-  }
-  return `${leaves.join(' ')} ${nestedParts.join(' ')}`;
-}
-
-/** Build the selection set for a nested-entry field, one fragment per block type. */
-async function fieldSelection(matrixTypeName, depth) {
-  const types = await possibleTypes(matrixTypeName);
-  if (!types?.length) return null;
-  const fragments = [];
-  for (const t of types) {
-    const sel = await blockSelection(t.name, depth);
-    if (sel) fragments.push(`... on ${t.name} { ${sel} }`);
-  }
-  return fragments.length ? `__typename id ${fragments.join(' ')}` : null;
-}
-
-function renderBlock(block, indent, lines) {
-  const pad = '  '.repeat(indent);
-  const label = String(block.__typename ?? '?').replace(/^ds_/, '').replace(/_Entry$/, '');
-  lines.push(`${pad}[${label} #${block.id}] ${block.title ?? ''}`.trimEnd());
-
-  for (const [key, value] of Object.entries(block)) {
-    if (['__typename', 'id', 'title'].includes(key)) continue;
-    if (Array.isArray(value)) continue;
-    if (value === null || value === '' || value === false) continue;
-    if (NOISE.test(key)) continue;
-    const text = String(value).trim();
-    if (!text) continue;
-    lines.push(`${pad}  ${key}: ${text.replace(/\n/g, `\n${pad}    `)}`);
-  }
-  for (const value of Object.values(block)) {
-    if (!Array.isArray(value)) continue;
-    for (const child of value) {
-      if (child && typeof child === 'object' && child.__typename) renderBlock(child, indent + 1, lines);
-    }
-  }
-}
-
 async function cmdPage(id, flags) {
   const core = await fetchEntryCore(id);
-  const type = await cachedTypeFields(core.__typename);
-  const depth = Number(flags.depth ?? 3);
-
-  const contentFields = (type?.fields ?? []).filter(
-    (f) => !needsArgs(f) && /_MatrixField$/.test(namedType(f.type).name ?? ''),
-  );
-  if (contentFields.length === 0) {
+  const { entry, query, contentFields } = await fetchPageTree(core, Number(flags.depth ?? 3));
+  if (!entry) {
     throw new CraftError(
       `${core.__typename} has no nested content fields. Use \`craft entry ${id}\` instead.`,
     );
   }
+  if (flags.raw) return out({ query, entry });
+  out(renderPage(entry, contentFields));
+}
 
-  const parts = [];
-  for (const f of contentFields) {
-    const sel = await fieldSelection(namedType(f.type).name, depth - 1);
-    if (sel) parts.push(`${f.name} { ${sel} }`);
-  }
-
-  const query = `query Page($id: [QueryArgument]) {
-  entry(id: $id, status: null) {
-    id title uri url status dateUpdated
-    ... on ${core.__typename} { ${parts.join('\n      ')} }
-  }
-}`;
-  assertReadOnly(query);
-  const data = await graphql(query, { id: [String(id)] });
-
-  if (flags.raw) return out({ query, entry: data.entry });
-
-  const entry = data.entry;
+function renderPage(entry, contentFields) {
   const lines = [
     `# ${entry.title}`,
     `${entry.url ?? entry.uri}`,
@@ -279,7 +198,218 @@ async function cmdPage(id, flags) {
     lines.push('', `--- ${f.name} ---`);
     for (const b of blocks) renderBlock(b, 0, lines);
   }
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------- vocabulary + corpus
+
+/** Every entry on the site, split into pages and nested blocks. */
+async function fetchAllEntries() {
+  const query = `{
+    entries(limit: 1000, status: null, orderBy: "uri asc") {
+      id title uri url status sectionHandle typeHandle dateUpdated
+    }
+  }`;
+  assertReadOnly(query);
+  const { entries } = await graphql(query);
+  return {
+    all: entries,
+    pages: entries.filter((e) => e.sectionHandle),
+    nested: entries.filter((e) => !e.sectionHandle),
+  };
+}
+
+/**
+ * Which block types exist, how often each is used, and which of their fields
+ * actually hold copy. This is the vocabulary any design prompt has to stay inside.
+ */
+/**
+ * Walk every page's block tree once. `entries()` does not return second-level
+ * nested blocks, so this — not an entries query — is the only complete source of
+ * what blocks exist and what is in them.
+ */
+async function walkSite(depth = 3, onPage = () => {}) {
+  const { pages, nested } = await fetchAllEntries();
+  const results = [];
+  for (const page of pages) {
+    const core = await fetchEntryCore(page.id);
+    let tree = null;
+    try {
+      tree = await fetchPageTree(core, depth);
+    } catch (err) {
+      process.stderr.write(`  ! ${page.id} ${page.uri ?? ''}: ${err.message.split('\n')[0]}\n`);
+    }
+    const blocks = tree?.entry ? flattenBlocks(tree.entry, tree.contentFields) : [];
+    const result = { page: core, tree: tree?.entry ?? null, contentFields: tree?.contentFields ?? [], blocks };
+    results.push(result);
+    onPage(result);
+  }
+  return { pages, nested, results };
+}
+
+/**
+ * Which block types exist, how often each is used, and which of their fields hold
+ * copy rather than presentation settings. This is the vocabulary any design work has
+ * to stay inside, so it is derived from real page content, not guessed.
+ */
+async function cmdBlocks(flags) {
+  const seen = new Map(); // typeHandle -> { count, pages:Set, fields: Map<field, values[]> }
+  const { results } = await walkSite(Number(flags.depth ?? 3), (r) =>
+    process.stderr.write(`  scanned ${r.page.id} ${r.page.uri ?? ''} (${r.blocks.length} blocks)\n`),
+  );
+
+  for (const { page, blocks } of results) {
+    for (const b of blocks) {
+      const handle = String(b.__typename ?? '?').replace(/_Entry$/, '');
+      if (!seen.has(handle)) seen.set(handle, { count: 0, pages: new Set(), fields: new Map() });
+      const rec = seen.get(handle);
+      rec.count += 1;
+      rec.pages.add(page.id);
+      for (const [key, value] of Object.entries(b)) {
+        if (typeof value !== 'string' || key.startsWith('_') || key === '__typename') continue;
+        if (!/^[a-zA-Z]+_[A-Za-z]/.test(key)) continue;
+        if (!rec.fields.has(key)) rec.fields.set(key, []);
+        if (value) rec.fields.get(key).push(value);
+      }
+    }
+  }
+
+  // Craft types presentation settings and real copy identically — both plain Strings
+  // — so classify from the values. A dropdown holds "md"; a copy field holds a
+  // sentence or HTML.
+  const report = [...seen.entries()]
+    .map(([handle, rec]) => {
+      const copy = [];
+      const presentation = [];
+      for (const [field, values] of rec.fields) {
+        const isCopy = values.some((v) => v.includes('<') || (v.length > 25 && v.includes(' ')));
+        if (isCopy) {
+          copy.push({ field, example: [...values].sort((a, b) => b.length - a.length)[0].slice(0, 80) });
+        } else {
+          presentation.push({ field, values: [...new Set(values)].slice(0, 6) });
+        }
+      }
+      return { handle, count: rec.count, pages: rec.pages.size, copy, presentation };
+    })
+    .sort((a, b) => b.count - a.count);
+
+  if (flags.json) return out(report);
+
+  const lines = [
+    `BLOCK VOCABULARY — ${report.length} types in use across ${results.length} pages, ` +
+      `${report.reduce((n, r) => n + r.count, 0)} instances`,
+    '',
+  ];
+  for (const r of report) {
+    lines.push(`${r.handle}  ×${r.count} on ${r.pages} page${r.pages === 1 ? '' : 's'}`);
+    for (const c of r.copy) lines.push(`    COPY    ${c.field}  e.g. ${JSON.stringify(c.example)}`);
+    if (!flags.terse) {
+      for (const pf of r.presentation) {
+        lines.push(`    style   ${pf.field}${pf.values.length ? `  [${pf.values.join(' | ')}]` : ''}`);
+      }
+    }
+    lines.push('');
+  }
+  lines.push(
+    'COPY fields hold editable text or HTML. style fields are presentation settings;',
+    'the values shown are the options actually in use on the site.',
+    '',
+    'These are the only block types the front end can render. A new type needs a Craft',
+    'entry type AND a matching Nuxt component — neither is reachable from this skill or',
+    'from the GraphQL API, which cannot touch the content model at all. Design work must',
+    'compose these, or use ds_EmbedBlock for raw HTML.',
+    '',
+    'Nested blocks are owned by one page (single ownerId) and cannot be shared between',
+    'pages. A repeated pattern is a convention you apply, not an object you reuse.',
+  );
   out(lines.join('\n'));
+}
+
+/**
+ * Write the whole site to disk: content trees, rendered HTML, and an inventory.
+ * The point is a corpus big enough to reason about the site as a whole — what
+ * patterns repeat, what is broken, what a design change would have to respect.
+ */
+async function cmdExport(flags) {
+  const dir = flags.out ?? 'site-export';
+  const { mkdirSync, writeFileSync } = await import('node:fs');
+  mkdirSync(`${dir}/pages`, { recursive: true });
+
+  const index = [];
+  const { pages, nested, results } = await walkSite(Number(flags.depth ?? 3));
+  writeFileSync(`${dir}/entries.json`, JSON.stringify({ pages, nested }, null, 2));
+  process.stderr.write(`${pages.length} pages, ${nested.length} nested blocks (top levels)\n`);
+
+  for (const { page, tree, blocks } of results) {
+    writeFileSync(
+      `${dir}/pages/${page.id}.json`,
+      JSON.stringify({ page, blocks, tree }, null, 2),
+    );
+
+    let html = null;
+    if (page.url && !flags['no-html']) {
+      try {
+        const res = await fetch(page.url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+        html = await res.text();
+        writeFileSync(`${dir}/pages/${page.id}.html`, html);
+      } catch (err) {
+        process.stderr.write(`  ! ${page.id} HTML: ${err.message}\n`);
+      }
+    }
+
+    index.push({
+      id: page.id,
+      title: page.title,
+      uri: page.uri,
+      url: page.url,
+      status: page.status,
+      section: page.sectionHandle,
+      type: page.typeHandle,
+      blocks: blocks.length,
+      blockTypes: [...new Set(blocks.map((b) => b.__typename))].sort(),
+      htmlBytes: html?.length ?? null,
+    });
+    process.stderr.write(`  ${page.id} ${page.uri ?? ''} — ${blocks.length} blocks, ${html?.length ?? 0} bytes HTML\n`);
+  }
+
+  writeFileSync(`${dir}/index.json`, JSON.stringify(index, null, 2));
+  writeFileSync(`${dir}/README.md`, corpusReadme(dir, index, nested));
+  out({
+    exported: dir,
+    pages: index.length,
+    blocks: index.reduce((n, p) => n + p.blocks, 0),
+    files: ['index.json', 'entries.json', 'README.md', `pages/<id>.json`, `pages/<id>.html`],
+    note: 'Embed blocks render client-side, so their content is in the JSON but not the saved HTML.',
+  });
+}
+
+function corpusReadme(dir, index, nested) {
+  const byType = {};
+  for (const p of index) for (const t of p.blockTypes) byType[t] = (byType[t] ?? 0) + 1;
+  return `# Site corpus — ${dir}
+
+Generated by \`craft export\`. Read-only snapshot of the live site.
+
+- \`index.json\` — one row per page: id, uri, status, block count, block types used
+- \`entries.json\` — every entry, split into pages and nested blocks
+- \`pages/<id>.json\` — the page's full block tree, plus a flattened block list
+- \`pages/<id>.html\` — the rendered page as served
+
+${index.length} pages, ${nested.length} nested blocks.
+
+## Block types by how many pages use them
+
+${Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, n]) => `- ${t} — ${n} pages`).join('\n')}
+
+## Caveats
+
+- **Embed blocks render client-side.** Their markup is in the Nuxt payload and injected
+  on hydration, so it is present in the JSON but absent from the saved HTML. Any page
+  using \`ds_EmbedBlock\` needs a headless browser render for a faithful snapshot.
+- The saved HTML references CSS and JS on Digistorm's CDN, so it needs a network
+  connection to render — but no authentication.
+- Disabled entries and drafts are included: the public schema exposes them.
+`;
 }
 
 // --------------------------------------------------------------- schema
@@ -354,6 +484,10 @@ async function main() {
       return cmdEntry(positional[0]);
     case 'page':
       return cmdPage(positional[0], flags);
+    case 'blocks':
+      return cmdBlocks(flags);
+    case 'export':
+      return cmdExport(flags);
     case 'drafts':
       return cmdDrafts(positional[0], flags);
     case 'query':
