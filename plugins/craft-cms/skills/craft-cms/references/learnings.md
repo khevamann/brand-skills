@@ -85,6 +85,14 @@ all read-only. Nothing has been through a real design tool yet.
   fragile, because that is what decides whether browser automation is viable.
 - No exact cross-page duplicate copy exists on this site today, so the divergence check
   in `craft scope` is unit-tested but unproven against real content.
-- 71 placeholder findings are live, including `Lorem ipsum` and "Digistorm School" demo
-  copy across news, events and academics pages. Worth fixing before any design work, so
-  a design tool is not shown placeholder text as if it were real.
+- 28 real placeholder findings, not the 71 first reported: 43 were on the `style-guide`
+  page, where placeholder text belongs. `findPlaceholders` now skips component demo
+  pages by default. The lesson generalises — a count is not a finding until you know
+  which pages are supposed to look like that.
+- The remaining 28 are "Digistorm School" demo copy and `Lorem ipsum`, concentrated on
+  the homepage (6), `academics/middle-school` (4), `admissions` (4) and the news and
+  events sections. `admissions/why-kirby` has none, so it is the clean page to start on.
+- Why it matters for a round trip: the brief shows the design tool the current copy, so
+  placeholder text means layout decisions get made against text that will be replaced.
+  It is also worth keeping copy fixes and design changes in separate manifests, or you
+  cannot tell which change caused what.

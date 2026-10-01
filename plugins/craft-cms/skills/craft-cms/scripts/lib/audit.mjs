@@ -50,9 +50,21 @@ export function relationValues(block) {
   return out;
 }
 
-export function findPlaceholders(corpus, profile = null) {
+/**
+ * Pages that are meant to contain placeholder text. A component demo page is doing
+ * its job when it says "Lorem ipsum", and on this site it accounts for most of the
+ * findings — enough to drown the real ones.
+ */
+export function isReferencePage(page) {
+  return /style[- ]?guide|component (library|demo)|kitchen sink/i.test(
+    `${page.title ?? ''} ${page.uri ?? ''}`,
+  );
+}
+
+export function findPlaceholders(corpus, profile = null, { includeReferencePages = false } = {}) {
   const findings = [];
   for (const { page, blocks } of corpus) {
+    if (!includeReferencePages && isReferencePage(page)) continue;
     for (const block of blocks) {
       for (const { field, value } of copyValues(block, profile)) {
         for (const { label, pattern } of PLACEHOLDER) {

@@ -14,7 +14,7 @@ import { buildGrammar, leafTypes } from './lib/grammar.mjs';
 import { extractTokens, extractClasses, groupClasses, extractModes } from './lib/designsystem.mjs';
 import {
   findPlaceholders, findEmptyBlocks, findDuplicateCopy, findBrokenInternalLinks,
-  collectExternalLinks, copyValues, relationValues,
+  collectExternalLinks, copyValues, relationValues, isReferencePage,
 } from './lib/audit.mjs';
 import { RADIUS, manifestConcerns, overallVerdict, exitCodeFor } from './lib/scope.mjs';
 import { profileFromCorpus, classifyField, COPY, PRESENTATION } from './lib/fields.mjs';
@@ -42,6 +42,7 @@ READ
   craft grammar                      Which block types are allowed inside which fields
   craft design-system [--out DIR]    Extract the live tokens, classes, grammar and style guide
   craft audit [--from DIR] [--links] Content checks: placeholders, empty blocks, broken links
+      --include-reference-pages      Also report placeholders on component demo pages
   craft brief <id> [--out FILE]      A paste-ready design brief for one page
   craft diff <id> <file.json|.html>  What an edited artefact would change (checks only)
   craft scope <id> <manifest.json>   Blast radius of a change: one page, or wider?
@@ -662,7 +663,14 @@ async function cmdAudit(flags) {
   const knownUris = corpus.map((c) => c.page.uri).filter(Boolean);
 
   const profile = profileFromCorpus(corpus);
-  const placeholders = findPlaceholders(corpus, profile);
+  const placeholders = findPlaceholders(corpus, profile, {
+    includeReferencePages: Boolean(flags['include-reference-pages']),
+  });
+  const onReferencePages = flags['include-reference-pages']
+    ? 0
+    : findPlaceholders(corpus.filter((c) => isReferencePage(c.page)), profile, {
+        includeReferencePages: true,
+      }).length;
   const empties = findEmptyBlocks(corpus, profile);
   const duplicates = findDuplicateCopy(corpus, 60, profile);
   const brokenInternal = htmlByPage.size ? findBrokenInternalLinks(htmlByPage, knownUris, origin) : [];
@@ -711,6 +719,9 @@ async function cmdAudit(flags) {
     blocks: corpus.reduce((n, c) => n + c.blocks.length, 0),
     findings: {
       placeholderCopy: placeholders.length,
+      placeholderCopyOnReferencePages: onReferencePages
+        ? `${onReferencePages} excluded (component demo pages — expected there)`
+        : 0,
       emptyBlocks: empties.length,
       pagesWithNoBlocks: noBlocks.length,
       internalLinksWithNoCraftPage: brokenInternal.length,
@@ -729,6 +740,14 @@ async function cmdAudit(flags) {
   section(lines, `PLACEHOLDER COPY (${placeholders.length})`, placeholders.map(
     (f) => `  ${f.status === 'live' ? 'LIVE' : f.status.toUpperCase()}  ${f.page}  #${f.blockId} ${f.field}\n        ${f.issue}: ${f.excerpt}`,
   ));
+
+  if (onReferencePages) {
+    lines.push(
+      `  (${onReferencePages} further findings on component demo pages were excluded — ` +
+        'placeholder text belongs there. Pass --include-reference-pages to see them.)',
+      '',
+    );
+  }
 
   section(lines, `PAGES WITH NO CONTENT BLOCKS (${noBlocks.length})`, noBlocks.map(
     (c) => `  ${c.page.status}  ${c.page.uri ?? '(no uri)'} — ${c.page.title}`,
