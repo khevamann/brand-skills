@@ -1,65 +1,33 @@
-// Transport + credentials. Nothing in here decides what is allowed; see guard.mjs.
-
-import { readFileSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
-
-const CONFIG_PATH = process.env.CRAFT_CONFIG ?? join(homedir(), '.config', 'craft-cms', 'env');
+// Transport. No credentials: this site's public GraphQL schema is readable
+// anonymously, so requests carry no Authorization header at all.
 
 export class CraftError extends Error {}
 
-function readConfigFile() {
-  try {
-    const raw = readFileSync(CONFIG_PATH, 'utf8');
-    const out = {};
-    for (const line of raw.split('\n')) {
-      const m = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*)$/);
-      if (!m) continue;
-      out[m[1]] = m[2].trim().replace(/^['"]|['"]$/g, '');
-    }
-    return out;
-  } catch {
-    return {};
-  }
-}
-
-export function loadConfig() {
-  const file = readConfigFile();
-  const endpoint = process.env.CRAFT_GRAPHQL_ENDPOINT ?? file.CRAFT_GRAPHQL_ENDPOINT;
-  const token = process.env.CRAFT_GRAPHQL_TOKEN ?? file.CRAFT_GRAPHQL_TOKEN;
-
-  if (!endpoint || !token) {
-    throw new CraftError(
-      'Missing credentials. Set CRAFT_GRAPHQL_ENDPOINT and CRAFT_GRAPHQL_TOKEN in the\n' +
-        `environment, or create ${CONFIG_PATH} containing:\n\n` +
-        '  CRAFT_GRAPHQL_ENDPOINT=https://your-site.com/actions/graphql/api\n' +
-        '  CRAFT_GRAPHQL_TOKEN=your-private-schema-token\n\n' +
-        'See the skill README for how to mint a read-only-ish token in Craft.',
-    );
-  }
-  return { endpoint, token };
-}
+// The site this skill talks to. Change this one line to point at another
+// environment; there is no configuration and nothing to set up.
+export const ENDPOINT =
+  'https://ks-us-ca-1849-website-2026.cms.digistormhosting.com.au/admin/actions/graphql/api';
 
 /**
- * Send a GraphQL request. Callers must have already passed the document through
- * the guard — this function deliberately knows nothing about permissions.
+ * Send a read query. Callers must pass the document through assertReadOnly
+ * first — this function deliberately knows nothing about permissions.
  *
- * `partial: true` accepts a response that carries both data and field-level
- * errors, reporting the errors on stderr instead of throwing. Plugins
- * mis-declare field types often enough (SEOmatic, for one) that one bad field
- * would otherwise make a whole entry unreadable. Writes never pass this.
+ * Field-level errors are reported on stderr rather than thrown when usable data
+ * came back. Plugins mis-declare field types often enough (SEOmatic declares
+ * `seomatic` as String but returns an object) that one bad field would otherwise
+ * make a whole entry unreadable.
  */
-export async function graphql(query, variables = {}, { partial = false } = {}) {
-  const { endpoint, token } = loadConfig();
-
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ query, variables }),
-  });
+export async function graphql(query, variables = {}) {
+  let res;
+  try {
+    res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, variables }),
+    });
+  } catch (cause) {
+    throw new CraftError(`Could not reach ${ENDPOINT}\n${cause.message}`);
+  }
 
   const text = await res.text();
   let body;
@@ -73,7 +41,7 @@ export async function graphql(query, variables = {}, { partial = false } = {}) {
 
   if (body.errors?.length) {
     const messages = body.errors.map((e) => `  - ${e.message}`).join('\n');
-    const usable = partial && body.data && Object.values(body.data).some((v) => v !== null);
+    const usable = body.data && Object.values(body.data).some((v) => v !== null);
     if (!usable) {
       // Craft masks validation failures behind one opaque message, so say what
       // it usually means rather than leaving the caller to guess.
@@ -87,8 +55,6 @@ export async function graphql(query, variables = {}, { partial = false } = {}) {
     }
     console.error(`WARNING: ${body.errors.length} field error(s), returning partial data:\n${messages}`);
   }
-  if (!res.ok) {
-    throw new CraftError(`HTTP ${res.status} from Craft.`);
-  }
+  if (!res.ok) throw new CraftError(`HTTP ${res.status} from Craft.`);
   return body.data;
 }

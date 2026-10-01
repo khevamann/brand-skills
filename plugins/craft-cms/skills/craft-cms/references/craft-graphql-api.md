@@ -4,28 +4,26 @@ Working notes for Craft 4 and 5. Verified against the Craft docs and
 `craftcms/cms` source (`src/gql/`). Where the two major versions differ, both are
 given — run `craft mutations` to see which one this site is.
 
-## Endpoint and auth
+## Endpoint
 
 ```
-POST https://YOUR-SITE.com/actions/graphql/api
+POST https://ks-us-ca-1849-website-2026.cms.digistormhosting.com.au/admin/actions/graphql/api
 Content-Type: application/json
-Authorization: Bearer <token>
 
 {"query": "...", "variables": {...}}
 ```
 
-`/index.php?action=graphql/api` is the same endpoint. A custom route may be mapped
-to `graphql/api` in `config/routes.php`, so the public path can differ per site.
+No `Authorization` header: this site's public schema is readable anonymously. Note the
+`/admin/` prefix — the action route sits under the control-panel trigger, so the more
+commonly documented `/actions/graphql/api` does not work here.
 
-- Tokens are created in the control panel under **GraphQL → Tokens**, each bound to
-  exactly one schema. The access token is 32 characters, shown once, and can be
-  regenerated to revoke access.
-- Tokens live in the database, not project config, so they are per-environment:
-  a staging token will not work against production.
-- Without a token the request falls back to the public schema, which is disabled by
-  default. A `403` or an empty schema usually means a missing or wrong token.
-- Errors come back as HTTP 200 with an `errors` array. Always check `errors`, not
-  just the status code.
+Errors come back as HTTP 200 with an `errors` array. Always check `errors`, not just
+the status code.
+
+**Worth knowing about this endpoint:** the public schema exposes more than published
+pages. `status: null` and `drafts: true` both work with no token, so disabled entries
+and in-progress drafts are readable by anyone who finds the URL. That is a property of
+the site's configuration, not of this skill.
 
 ## Reading
 
@@ -115,61 +113,27 @@ relations return lists needing a subselection; `Money`, `Dropdown` and `Table`
 fields have their own generated types. `craft schema <TypeName>` prints a type's
 fields when you are unsure.
 
-## Mutations
+## Mutations — not available here
 
-Craft generates mutations per section and entry type. Exact names:
+Craft does expose writes: per-section `save_<section>_<type>_Entry` and
+`save_<section>_<type>_Draft` mutations, plus `createDraft`, `publishDraft` and
+`deleteEntry`. None of them is reachable from this skill, and the detail is left out
+on purpose rather than documented and then forbidden.
 
-| Mutation | Arguments | Returns |
-|---|---|---|
-| `save_<section>_<type>_Entry` | entry args + custom fields | the entry |
-| `save_<section>_<type>_Draft` | draft args + custom fields | the entry (Craft 5) |
-| `createDraft` | `id: Int!`, `name: String`, `notes: String`, `provisional: Boolean`, `creatorId: Int` | `ID` |
-| `publishDraft` | `id: Int!`, `provisional: Boolean` | `ID` |
-| `deleteEntry` | `id: Int!`, `siteId: Int`, `hardDelete: Boolean` | `Boolean` |
-| `save_<volume>_Asset`, `deleteAsset` | | |
-| `save_<group>_Category`, `deleteCategory` | | |
-| `save_<group>_Tag`, `deleteTag` | | |
-| `save_<set>_GlobalSet` | | |
-| `save_<field>Field_<type>_Entry` / `_Draft` | nested entry fields (Craft 5) | |
+Three independent reasons they cannot be called:
 
-Shared entry arguments (`src/gql/arguments/mutations/Entry.php`): `id`, `uid`,
-`title`, `slug`, `enabled`, `authorId`, `authorIds`, `postDate`, `expiryDate`,
-`siteId`, `revisionNotes`. Structure sections add `prependTo`, `appendTo`,
-`prependToRoot`, `appendToRoot`, `insertBefore`, `insertAfter`.
+1. **The schema has none of them.** This site's public schema grants View scope only,
+   and scopes control which fields exist at all — not just which results come back.
+   `ping` is the only mutation in it. A write returns `{"data":[]}` because the field
+   does not exist.
+2. **No token is sent.** Write mutations appear only in a private schema with Edit
+   scope, which a token unlocks. `client.mjs` sends no `Authorization` header.
+3. **The guard refuses them.** `assertReadOnly` rejects any document containing
+   `mutation` or `subscription`, or naming a write field. This holds even if someone
+   grants the public schema Edit scope later.
 
-Draft-specific arguments (`src/gql/arguments/mutations/Draft.php`) — everything
-above except `id` and `uid`, plus:
-
-| Argument | Type | Meaning |
-|---|---|---|
-| `draftId` | `ID` | The draft to write to. Omit only when creating an unpublished draft |
-| `asUnpublishedDraft` | `Boolean` | Create brand-new content that has never been live |
-| `draftName` | `String` | Shown in the control panel's draft list |
-| `draftNotes` | `String` | Free-text note on the draft |
-| `provisional` | `Boolean` | Target the autosave draft. Avoid |
-
-**The critical detail:** `save_<section>_<type>_Entry` writes to the *live* entry
-unless `draftId` is supplied. Craft 5's `save_<section>_<type>_Draft` can only ever
-write to a draft. This is why `guard.mjs` requires a `draftId` on the `_Entry` form
-and prefers the `_Draft` form when the schema has it.
-
-### The draft round-trip
-
-```graphql
-# 1. Make the draft. 101 is the canonical entry id.
-mutation { createDraft(id: 101, name: "Shorter intro", notes: "Prepared for review") }
-
-# 2. Write to it. draftId is the value from EntryInterface.draftId, not the entry id.
-mutation ($draftId: ID) {
-  save_news_article_Draft(draftId: $draftId, title: "New title") { id title draftId }
-}
-
-# 3. A human publishes it in the control panel. publishDraft is blocked here.
-```
-
-`createDraft`'s return value has meant different things across Craft versions, so
-read the draft back with `entries(draftOf: 101, drafts: true, status: null)` rather
-than trusting it. `craft draft-create` already does this.
+Run `craft mutations` to see the live position. Content changes happen in the control
+panel.
 
 ## Gotchas
 

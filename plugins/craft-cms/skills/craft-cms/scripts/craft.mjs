@@ -1,72 +1,47 @@
 #!/usr/bin/env node
-// craft — read + draft-only access to a Craft CMS GraphQL API.
+// craft — read-only access to the Craft CMS website.
 //
-// Reads are free-form but guarded. Writes are limited to three operations this
-// file builds itself: create a draft of an existing entry, create brand-new
-// unpublished-draft content, and set field values on a draft. Nothing here can
-// publish, delete, or modify live content. See lib/guard.mjs.
+// Searches and reads content. Cannot write: the site's public schema exposes no
+// write mutations, requests carry no token, and lib/guard.mjs rejects any document
+// containing a mutation. Content changes happen in the Craft control panel.
 
 import { readFileSync } from 'node:fs';
-import { graphql, CraftError } from './lib/client.mjs';
-import {
-  assertReadOnly,
-  assertDraftWrite,
-  isDeniedMutation,
-  DENIED_ARGUMENTS,
-  GuardError,
-} from './lib/guard.mjs';
-import { rootFields, mutationField, typeFields, renderType, namedType } from './lib/introspect.mjs';
+import { graphql, ENDPOINT, CraftError } from './lib/client.mjs';
+import { assertReadOnly, isDenied, GuardError } from './lib/guard.mjs';
+import { rootFields, typeFields, possibleTypes, renderType, namedType, needsArgs } from './lib/introspect.mjs';
 
-const USAGE = `craft — read and draft-only access to Craft CMS
+const USAGE = `craft — read-only access to the Craft CMS website
 
-READ
-  craft sections                     Sections and entry types this token can see
-  craft entries [opts]               Search entries
+  ${ENDPOINT}
+
+FIND
+  craft sections                     Sections and entry types on the site
+  craft entries [opts]               Search or list entries
       --section <handle>  --type <handle>  --search "terms"
       --limit <n>         --status <live|disabled|all>
-  craft entry <id>                   One entry with its scalar field values
   craft drafts <entryId>             Drafts of an entry
   craft drafts --unpublished         Drafts that have never been published
-  craft fields <id>                  Fields settable on a draft of this entry
+
+READ
+  craft page <id>                    A page's copy, walking the nested block tree
+      --raw                          Full JSON instead of rendered text
+      --depth <n>                    How far to follow nesting (default 3)
+  craft entry <id>                   One entry's own fields
   craft query <file|->               Run a GraphQL query from a file or stdin
   craft query --q "{ ping }"         Run an inline GraphQL query
   craft schema [TypeName]            Query root fields, or one type's fields
-  craft mutations                    What this token could mutate, and what is blocked
+  craft mutations                    Audit: what the schema could write, and why none of it is reachable
 
-DRAFT — the only writes available
-  craft draft-create <entryId> [--name "..."] [--notes "..."]
-      New draft of an existing entry. Live content untouched.
-
-  craft draft-new --section <handle> --type <handle> --title "..." [--field ...]
-      Brand-new content as an unpublished draft. Nothing goes live.
-
-  craft draft-set <draftEntryId> --field title="New title" \\
-                                 --field body=@/path/to/file.md \\
-                                 --json-field someMatrix='[{...}]'
-      Write field values into an existing draft.
-
-  Add --dry-run to any draft command to print the mutation without sending it.
-
-BLOCKED BY DESIGN: publishing, deleting, editing live entries, assets,
-categories, tags, globals, users, structure moves, config. Not reachable
-through \`craft query\` either — that path rejects every mutation document.
+This skill is read-only. There is no command that creates, edits, publishes or
+deletes anything, and \`craft query\` refuses any document containing a mutation.
 `;
 
 function parseArgs(argv) {
   const positional = [];
   const flags = {};
-  const fields = [];
-  const jsonFields = [];
-
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
-    if (arg === '--field' || arg === '--json-field') {
-      const pair = argv[++i];
-      if (!pair || !pair.includes('=')) throw new GuardError(`${arg} needs key=value`);
-      const key = pair.slice(0, pair.indexOf('='));
-      const value = pair.slice(pair.indexOf('=') + 1);
-      (arg === '--field' ? fields : jsonFields).push([key, value]);
-    } else if (arg.startsWith('--')) {
+    if (arg.startsWith('--')) {
       const [key, inline] = arg.slice(2).split(/=(.*)/s);
       if (inline !== undefined) flags[key] = inline;
       else if (argv[i + 1] && !argv[i + 1].startsWith('--')) flags[key] = argv[++i];
@@ -75,42 +50,23 @@ function parseArgs(argv) {
       positional.push(arg);
     }
   }
-  return { positional, flags, fields, jsonFields };
+  return { positional, flags };
 }
 
 const out = (value) => console.log(typeof value === 'string' ? value : JSON.stringify(value, null, 2));
 
-// ----------------------------------------------------------------- read
+// Presentation and plumbing fields, hidden when rendering copy. They are still
+// present in --raw output.
+const NOISE =
+  /(Colo(u)?r|Palette|Padding|Spacing|SpaceBetween|Width|Align|Size|Opacity|Height|Position|Theme|Animation|Border|Divider|Columns|Overlay|ImageType|IconSize)|^(sortOrder|fieldId|fieldHandle|ownerId|uid|slug|uri|url|enabled|enabledForSite|status|language|siteHandle|siteId|siteSettingsId|structureId|lft|rgt|level|root|typeId|typeHandle|sectionId|sectionHandle|authorId|authorIds|canonicalId|canonicalUid|searchScore|seo|seomatic|archived|trashed|hideBanner|showBreadcrumbs|pageVisibility)$|^(date|post|expiry|is|draft|revision|_count)/;
 
 async function cmdSections() {
-  // Section metadata is not exposed as a query, so derive handles from the
-  // generated per-section mutations, which are named for them.
-  const mutations = await rootFields('mutation').catch(() => []);
-  const bySection = new Map();
-  for (const f of mutations) {
-    const m = f.name.match(/^save_(.+?)_(.+?)_(Entry|Draft)$/);
-    if (!m || m[1].endsWith('Field')) continue;
-    if (!bySection.has(m[1])) bySection.set(m[1], new Set());
-    bySection.get(m[1]).add(m[2]);
-  }
-
-  if (bySection.size > 0) {
-    out(
-      [...bySection.entries()]
-        .sort()
-        .map(([section, types]) => `${section}\n  types: ${[...types].sort().join(', ')}`)
-        .join('\n'),
-    );
-    return;
-  }
-
-  out('This token exposes no entry mutations (read-only schema). Deriving handles from entries:');
   const query = `{ entries(limit: 500, status: null) { sectionHandle typeHandle } }`;
   assertReadOnly(query);
-  const data = await graphql(query, {}, { partial: true });
+  const data = await graphql(query);
 
   // Entries inside a Craft 5 nested-entry field belong to a field, not a section,
-  // so they come back with a null sectionHandle. They are not pages.
+  // so they come back with a null sectionHandle. They are blocks, not pages.
   const sections = new Set();
   const nested = new Set();
   for (const e of data.entries) {
@@ -120,8 +76,7 @@ async function cmdSections() {
   out(
     'SECTIONS (section / entry type):\n' +
       [...sections].sort().map((s) => `  ${s}`).join('\n') +
-      `\n\nNESTED ENTRY TYPES (${nested.size}) — page-builder blocks, not pages. ` +
-      'Not draftable by this tool:\n  ' +
+      `\n\nNESTED ENTRY TYPES (${nested.size}) — page-builder blocks, not pages:\n  ` +
       [...nested].sort().join(', '),
   );
 }
@@ -137,7 +92,7 @@ async function cmdEntries(flags) {
         section: $section, type: $type, search: $search
         limit: $limit, status: $status, orderBy: "dateUpdated desc"
       ) {
-        id title slug status sectionHandle typeHandle dateUpdated url
+        id title slug uri status sectionHandle typeHandle dateUpdated url
       }
     }`;
   assertReadOnly(query);
@@ -148,24 +103,26 @@ async function cmdEntries(flags) {
     limit: Number(flags.limit ?? 25),
     status,
   });
-  out({ total: data.entryCount, showing: data.entries.length, entries: data.entries });
+  out({
+    total: data.entryCount,
+    showing: data.entries.length,
+    entries: data.entries,
+    hint: data.entryCount === 0 && flags.search
+      ? "Search found nothing. The index is not always current — list with --status all and filter, before concluding the page doesn't exist."
+      : undefined,
+  });
 }
-
-const CORE_ENTRY_FIELDS = `
-  id title slug uri url status enabled
-  sectionHandle typeHandle
-  isDraft draftId draftName draftNotes isProvisionalDraft isUnpublishedDraft
-  postDate dateUpdated __typename
-`;
 
 async function fetchEntryCore(id) {
   if (!id) throw new GuardError('An entry id is required.');
-  const query = `query ($id: [QueryArgument]) { entry(id: $id, status: null) { ${CORE_ENTRY_FIELDS} } }`;
+  const query = `query ($id: [QueryArgument]) {
+    entry(id: $id, status: null) {
+      id title slug uri url status sectionHandle typeHandle dateUpdated __typename
+    }
+  }`;
   assertReadOnly(query);
   const data = await graphql(query, { id: [String(id)] });
-  if (!data.entry) {
-    throw new CraftError(`No entry visible with id ${id}. Check the id and the token's schema scope.`);
-  }
+  if (!data.entry) throw new CraftError(`No entry with id ${id}.`);
   return data.entry;
 }
 
@@ -173,35 +130,32 @@ async function cmdEntry(id) {
   const core = await fetchEntryCore(id);
   const type = await typeFields(core.__typename);
 
-  // Select every leaf field. Anything needing a subselection (Matrix, relations)
-  // is reported by name so it can be queried deliberately.
   const leaves = [];
-  const complex = [];
+  const structured = [];
   for (const f of type?.fields ?? []) {
-    if (f.args?.length) continue;
+    if (needsArgs(f)) continue;
     const named = namedType(f.type);
     if (named.kind === 'SCALAR' || named.kind === 'ENUM') leaves.push(f.name);
-    else complex.push(`${f.name}: ${renderType(f.type)}`);
+    else structured.push(`${f.name}: ${renderType(f.type)}`);
   }
 
   const query = `query ($id: [QueryArgument]) { entry(id: $id, status: null) { ${leaves.join(' ')} } }`;
   assertReadOnly(query);
-  const data = await graphql(query, { id: [String(id)] }, { partial: true });
+  const data = await graphql(query, { id: [String(id)] });
 
   out({
+    type: core.__typename,
     entry: data.entry,
-    structuredFields: complex,
-    hint: complex.length
-      ? 'Those fields hold structured content — query them with `craft query` and a subselection.'
+    structuredFields: structured,
+    hint: structured.some((f) => /_MatrixField/.test(f))
+      ? `This entry's content is in nested blocks — run \`craft page ${id}\` to read it.`
       : undefined,
   });
 }
 
 async function cmdDrafts(entryId, flags) {
   const unpublished = flags.unpublished === true || flags.unpublished === 'true';
-  if (!unpublished && !entryId) {
-    throw new GuardError('Pass a canonical entry id, or --unpublished.');
-  }
+  if (!unpublished && !entryId) throw new GuardError('Pass an entry id, or --unpublished.');
   const query = `
     query ($draftOf: QueryArgument) {
       entries(draftOf: $draftOf, drafts: true, status: null, orderBy: "dateUpdated desc") {
@@ -214,6 +168,122 @@ async function cmdDrafts(entryId, flags) {
   out({ scope: unpublished ? 'unpublished drafts' : `drafts of ${entryId}`, drafts: data.entries });
 }
 
+// ------------------------------------------------- page content walking
+
+const typeCache = new Map();
+async function cachedTypeFields(name) {
+  if (!typeCache.has(name)) typeCache.set(name, await typeFields(name));
+  return typeCache.get(name);
+}
+
+/**
+ * Build an inline-fragment selection for one block type, recursing into any
+ * nested-entry fields it has. Depth is bounded because these trees can nest.
+ */
+async function blockSelection(typeName, depth) {
+  const type = await cachedTypeFields(typeName);
+  if (!type) return null;
+
+  const leaves = ['__typename', 'id', 'title'];
+  const nestedParts = [];
+
+  for (const f of type.fields ?? []) {
+    if (needsArgs(f) || leaves.includes(f.name)) continue;
+    const named = namedType(f.type);
+    if (named.kind === 'SCALAR' || named.kind === 'ENUM') {
+      // SEOmatic lies about this field's type and poisons the whole selection.
+      if (f.name === 'seomatic') continue;
+      leaves.push(f.name);
+    } else if (depth > 0 && /_MatrixField$/.test(named.name ?? '')) {
+      const inner = await fieldSelection(named.name, depth - 1);
+      if (inner) nestedParts.push(`${f.name} { ${inner} }`);
+    }
+  }
+  return `${leaves.join(' ')} ${nestedParts.join(' ')}`;
+}
+
+/** Build the selection set for a nested-entry field, one fragment per block type. */
+async function fieldSelection(matrixTypeName, depth) {
+  const types = await possibleTypes(matrixTypeName);
+  if (!types?.length) return null;
+  const fragments = [];
+  for (const t of types) {
+    const sel = await blockSelection(t.name, depth);
+    if (sel) fragments.push(`... on ${t.name} { ${sel} }`);
+  }
+  return fragments.length ? `__typename id ${fragments.join(' ')}` : null;
+}
+
+function renderBlock(block, indent, lines) {
+  const pad = '  '.repeat(indent);
+  const label = String(block.__typename ?? '?').replace(/^ds_/, '').replace(/_Entry$/, '');
+  lines.push(`${pad}[${label} #${block.id}] ${block.title ?? ''}`.trimEnd());
+
+  for (const [key, value] of Object.entries(block)) {
+    if (['__typename', 'id', 'title'].includes(key)) continue;
+    if (Array.isArray(value)) continue;
+    if (value === null || value === '' || value === false) continue;
+    if (NOISE.test(key)) continue;
+    const text = String(value).trim();
+    if (!text) continue;
+    lines.push(`${pad}  ${key}: ${text.replace(/\n/g, `\n${pad}    `)}`);
+  }
+  for (const value of Object.values(block)) {
+    if (!Array.isArray(value)) continue;
+    for (const child of value) {
+      if (child && typeof child === 'object' && child.__typename) renderBlock(child, indent + 1, lines);
+    }
+  }
+}
+
+async function cmdPage(id, flags) {
+  const core = await fetchEntryCore(id);
+  const type = await cachedTypeFields(core.__typename);
+  const depth = Number(flags.depth ?? 3);
+
+  const contentFields = (type?.fields ?? []).filter(
+    (f) => !needsArgs(f) && /_MatrixField$/.test(namedType(f.type).name ?? ''),
+  );
+  if (contentFields.length === 0) {
+    throw new CraftError(
+      `${core.__typename} has no nested content fields. Use \`craft entry ${id}\` instead.`,
+    );
+  }
+
+  const parts = [];
+  for (const f of contentFields) {
+    const sel = await fieldSelection(namedType(f.type).name, depth - 1);
+    if (sel) parts.push(`${f.name} { ${sel} }`);
+  }
+
+  const query = `query Page($id: [QueryArgument]) {
+  entry(id: $id, status: null) {
+    id title uri url status dateUpdated
+    ... on ${core.__typename} { ${parts.join('\n      ')} }
+  }
+}`;
+  assertReadOnly(query);
+  const data = await graphql(query, { id: [String(id)] });
+
+  if (flags.raw) return out({ query, entry: data.entry });
+
+  const entry = data.entry;
+  const lines = [
+    `# ${entry.title}`,
+    `${entry.url ?? entry.uri}`,
+    `entry ${entry.id} · ${entry.status} · updated ${entry.dateUpdated}`,
+  ];
+  for (const f of contentFields) {
+    const blocks = entry[f.name];
+    if (!Array.isArray(blocks) || blocks.length === 0) continue;
+    lines.push('', `--- ${f.name} ---`);
+    for (const b of blocks) renderBlock(b, 0, lines);
+  }
+  out(lines.join('\n'));
+}
+
+// --------------------------------------------------------------- schema
+
 async function cmdQuery(positional, flags) {
   let document = typeof flags.q === 'string' ? flags.q : undefined;
   if (!document) {
@@ -222,20 +292,18 @@ async function cmdQuery(positional, flags) {
     document = source === '-' ? readFileSync(0, 'utf8') : readFileSync(source, 'utf8');
   }
   assertReadOnly(document);
-  const variables = flags.variables ? JSON.parse(flags.variables) : {};
-  out(await graphql(document, variables, { partial: true }));
+  out(await graphql(document, flags.variables ? JSON.parse(flags.variables) : {}));
 }
 
 async function cmdSchema(typeName) {
   if (typeName) {
     // Craft 5 names entry types <entryType>_Entry, with no section prefix. Craft 4
-    // uses <section>_<entryType>_Entry. Guessing wrong gets Craft's opaque error,
-    // so point at the reliable way to find the real name.
+    // uses <section>_<entryType>_Entry. Guessing wrong gets Craft's opaque error.
     const type = await typeFields(typeName).catch((err) => {
       throw new CraftError(
         `Could not introspect \`${typeName}\`.\n${err.message}\n\n` +
-          'Get a type name from the data rather than guessing it:\n' +
-          '  craft query --q \'{ entry(id: <id>) { __typename } }\'',
+          'Read a type name off the data rather than guessing it:\n' +
+          "  craft query --q '{ entry(id: <id>) { __typename } }'",
       );
     });
     if (!type) throw new CraftError(`No type named ${typeName}.`);
@@ -251,231 +319,26 @@ async function cmdSchema(typeName) {
 }
 
 async function cmdMutations() {
-  const fields = await rootFields('mutation');
-  const allowed = [];
-  const denied = [];
-  for (const f of fields) {
-    if (isDeniedMutation(f.name)) {
-      denied.push(f.name);
-    } else if (f.name === 'createDraft') {
-      allowed.push(`${f.name}  — draft of an existing entry`);
-    } else if (/^save_[A-Za-z0-9_]+_Draft$/.test(f.name)) {
-      allowed.push(`${f.name}  — draft writes only`);
-    } else if (/^save_[A-Za-z0-9_]+_Entry$/.test(f.name)) {
-      allowed.push(`${f.name}  — only when scoped with a draftId`);
-    } else {
-      denied.push(f.name);
-    }
-  }
+  const fields = await rootFields('mutation').catch(() => []);
+  const writes = fields.filter((f) => isDenied(f.name));
   out(
-    `This token's schema exposes ${fields.length} mutations.\n\n` +
-      `REACHABLE THROUGH THIS TOOL (${allowed.length}):\n` +
-      (allowed.sort().map((a) => `  ${a}`).join('\n') || '  none') +
-      `\n\nBLOCKED (${denied.length}):\n` +
-      (denied.sort().map((d) => `  ${d}`).join('\n') || '  none') +
-      '\n\nBlocked mutations are unreachable: craft.mjs will not build them, and\n' +
-      '`craft query` rejects every document containing a mutation.',
+    `Mutations in the schema this endpoint serves: ${fields.length}\n` +
+      (fields.length ? fields.map((f) => `  ${f.name}`).join('\n') + '\n' : '') +
+      `\nWrite mutations: ${writes.length}\n` +
+      (writes.length ? writes.map((f) => `  ${f.name}`).join('\n') + '\n' : '') +
+      '\nNone of them is reachable from this skill, for three separate reasons:\n' +
+      '  1. No token is sent, so no private schema with edit scope is unlocked.\n' +
+      '  2. This CLI has no command that writes.\n' +
+      '  3. lib/guard.mjs rejects any document containing a mutation.\n' +
+      '\nContent changes happen in the Craft control panel.',
   );
-}
-
-// --------------------------------------------------------------- drafts
-
-/**
- * Find the mutation to write a draft for this section/type. Craft 5 has a
- * dedicated save_..._Draft; Craft 4 only has save_..._Entry, which this tool
- * will use solely with a draftId.
- */
-async function resolveDraftMutation(sectionHandle, typeHandle) {
-  if (!sectionHandle || !typeHandle) {
-    throw new CraftError(
-      'No section/type handle available (nested entry?). This tool cannot derive its mutation.',
-    );
-  }
-  for (const suffix of ['Draft', 'Entry']) {
-    const name = `save_${sectionHandle}_${typeHandle}_${suffix}`;
-    const field = await mutationField(name);
-    if (field) return field;
-  }
-  throw new CraftError(
-    `The schema exposes neither save_${sectionHandle}_${typeHandle}_Draft nor ` +
-      `save_${sectionHandle}_${typeHandle}_Entry. The token's schema likely lacks write ` +
-      'scope for that section — run `craft mutations`.',
-  );
-}
-
-async function cmdFields(entryId) {
-  const entry = await fetchEntryCore(entryId);
-  const mutation = await resolveDraftMutation(entry.sectionHandle, entry.typeHandle);
-  const blocked = new Set([...DENIED_ARGUMENTS, 'draftId', 'asUnpublishedDraft']);
-  out({
-    entry: { id: entry.id, title: entry.title, section: entry.sectionHandle, type: entry.typeHandle },
-    mutation: mutation.name,
-    settable: mutation.args
-      .filter((a) => !blocked.has(a.name))
-      .map((a) => `${a.name}: ${renderType(a.type)}`),
-    refused: mutation.args.filter((a) => DENIED_ARGUMENTS.includes(a.name)).map((a) => a.name),
-  });
-}
-
-async function cmdDraftCreate(entryId, flags) {
-  const entry = await fetchEntryCore(entryId);
-  if (entry.isDraft) {
-    throw new CraftError(`${entryId} is already a draft. Pass the canonical entry id.`);
-  }
-
-  const variables = { id: Number(entry.id), name: flags.name ?? null, notes: flags.notes ?? null };
-  assertDraftWrite('createDraft', variables);
-
-  const document = `mutation CreateDraft($id: Int!, $name: String, $notes: String) {
-  createDraft(id: $id, name: $name, notes: $notes)
-}`;
-
-  if (flags['dry-run']) return out({ dryRun: true, document, variables });
-
-  await graphql(document, variables);
-
-  // createDraft's return value has changed meaning across Craft versions, so
-  // report the draft by reading it back instead of trusting it.
-  const after = await graphql(
-    `query ($id: QueryArgument) {
-      entries(draftOf: $id, drafts: true, status: null, orderBy: "dateUpdated desc", limit: 1) {
-        id draftId draftName dateUpdated
-      }
-    }`,
-    { id: String(entry.id) },
-  );
-  const draft = after.entries[0];
-  out({
-    created: true,
-    canonicalEntry: { id: entry.id, title: entry.title },
-    draft,
-    next: draft
-      ? `craft draft-set ${draft.id} --field title="..."`
-      : `Draft created but not returned — run \`craft drafts ${entry.id}\`.`,
-  });
-}
-
-function coerce(key, rawValue, argType) {
-  const named = namedType(argType);
-  const isList =
-    argType.kind === 'LIST' || (argType.kind === 'NON_NULL' && argType.ofType?.kind === 'LIST');
-  if (named.kind === 'INPUT_OBJECT' || isList) {
-    throw new GuardError(
-      `Field \`${key}\` is ${renderType(argType)} — pass it with --json-field ${key}='<json>'.`,
-    );
-  }
-  switch (named.name) {
-    case 'Int':
-      return Number.parseInt(rawValue, 10);
-    case 'Float':
-      return Number.parseFloat(rawValue);
-    case 'Boolean':
-      return rawValue === 'true' || rawValue === '1';
-    default:
-      return rawValue;
-  }
-}
-
-/** Turn --field / --json-field pairs into typed variables for a mutation. */
-function buildFieldVariables(mutation, fields, jsonFields, context) {
-  const argByName = new Map(mutation.args.map((a) => [a.name, a]));
-  const variables = {};
-  const declarations = [];
-  const callArgs = [];
-
-  const add = (key, value, argType) => {
-    variables[key] = value;
-    declarations.push(`$${key}: ${renderType(argType)}`);
-    callArgs.push(`${key}: $${key}`);
-  };
-
-  for (const [key, raw] of fields) {
-    const arg = argByName.get(key);
-    if (!arg) throw new GuardError(`\`${key}\` is not an argument of ${mutation.name}. ${context}`);
-    const value = raw.startsWith('@') ? readFileSync(raw.slice(1), 'utf8') : raw;
-    add(key, coerce(key, value, arg.type), arg.type);
-  }
-  for (const [key, raw] of jsonFields) {
-    const arg = argByName.get(key);
-    if (!arg) throw new GuardError(`\`${key}\` is not an argument of ${mutation.name}. ${context}`);
-    add(key, JSON.parse(raw), arg.type);
-  }
-  return { variables, declarations, callArgs };
-}
-
-async function cmdDraftNew({ flags, fields, jsonFields }) {
-  const { section, type, title } = flags;
-  if (!section || !type) {
-    throw new GuardError('--section and --type are required. Run `craft sections` to list them.');
-  }
-  const mutation = await resolveDraftMutation(section, type);
-  if (!/_Draft$/.test(mutation.name)) {
-    throw new CraftError(
-      `This Craft version only exposes ${mutation.name}, which cannot create draft-only ` +
-        'content from scratch. Create the entry in the control panel, then use ' +
-        '`craft draft-create <id>`.',
-    );
-  }
-
-  const allFields = title ? [['title', String(title)], ...fields] : fields;
-  const built = buildFieldVariables(mutation, allFields, jsonFields, `Run \`craft schema\` for its args.`);
-
-  const variables = { asUnpublishedDraft: true, ...built.variables };
-  assertDraftWrite(mutation.name, variables);
-
-  const document = `mutation NewDraft($asUnpublishedDraft: Boolean${built.declarations.length ? ', ' + built.declarations.join(', ') : ''}) {
-  ${mutation.name}(asUnpublishedDraft: $asUnpublishedDraft${built.callArgs.length ? ', ' + built.callArgs.join(', ') : ''}) {
-    id title isDraft draftId isUnpublishedDraft dateUpdated
-  }
-}`;
-
-  if (flags['dry-run']) return out({ dryRun: true, document, variables });
-  const data = await graphql(document, variables);
-  out({ created: 'unpublished draft', draft: data[mutation.name], live: false });
-}
-
-async function cmdDraftSet(draftEntryId, { flags, fields, jsonFields }) {
-  if (fields.length === 0 && jsonFields.length === 0) {
-    throw new GuardError('Nothing to set. Pass at least one --field or --json-field.');
-  }
-
-  const draft = await fetchEntryCore(draftEntryId);
-  if (!draft.isDraft) {
-    throw new CraftError(
-      `Entry ${draftEntryId} is live content, not a draft. Run ` +
-        `\`craft draft-create ${draftEntryId}\` and set values on the draft it returns.`,
-    );
-  }
-  if (!draft.draftId) throw new CraftError(`Draft ${draftEntryId} has no draftId; cannot save safely.`);
-  if (draft.isProvisionalDraft) {
-    throw new CraftError(
-      `Draft ${draftEntryId} is provisional (someone's unsaved control-panel changes). Refusing to touch it.`,
-    );
-  }
-
-  const mutation = await resolveDraftMutation(draft.sectionHandle, draft.typeHandle);
-  const built = buildFieldVariables(mutation, fields, jsonFields, `Run \`craft fields ${draftEntryId}\`.`);
-
-  const variables = { draftId: String(draft.draftId), ...built.variables };
-  assertDraftWrite(mutation.name, variables);
-
-  const document = `mutation SaveDraft($draftId: ID${built.declarations.length ? ', ' + built.declarations.join(', ') : ''}) {
-  ${mutation.name}(draftId: $draftId${built.callArgs.length ? ', ' + built.callArgs.join(', ') : ''}) {
-    id title isDraft draftId dateUpdated
-  }
-}`;
-
-  if (flags['dry-run']) return out({ dryRun: true, document, variables });
-  const data = await graphql(document, variables);
-  out({ saved: true, draft: data[mutation.name] });
 }
 
 // ------------------------------------------------------------------ main
 
 async function main() {
   const [command, ...rest] = process.argv.slice(2);
-  const parsed = parseArgs(rest);
-  const { positional, flags } = parsed;
+  const { positional, flags } = parseArgs(rest);
 
   switch (command) {
     case undefined:
@@ -489,22 +352,16 @@ async function main() {
       return cmdEntries(flags);
     case 'entry':
       return cmdEntry(positional[0]);
+    case 'page':
+      return cmdPage(positional[0], flags);
     case 'drafts':
       return cmdDrafts(positional[0], flags);
-    case 'fields':
-      return cmdFields(positional[0]);
     case 'query':
       return cmdQuery(positional, flags);
     case 'schema':
       return cmdSchema(positional[0]);
     case 'mutations':
       return cmdMutations();
-    case 'draft-create':
-      return cmdDraftCreate(positional[0], flags);
-    case 'draft-new':
-      return cmdDraftNew(parsed);
-    case 'draft-set':
-      return cmdDraftSet(positional[0], parsed);
     default:
       throw new GuardError(`Unknown command \`${command}\`.\n\n${USAGE}`);
   }

@@ -4,17 +4,25 @@
     "name": "khevamann"
   },
   "metadata": {
-    "description": "Claude skills for working with our Craft CMS website",
+    "description": "Claude skills for our Craft CMS website (read-only)",
     "version": "0.1.0"
   },
   "plugins": [
     {
       "name": "craft-cms",
       "source": "./plugins/craft-cms",
-      "description": "Read and search the Craft CMS website, and prepare content changes as drafts for a human to review and publish. Cannot publish, delete, or edit live content.",
+      "description": "Search and read the Kirby school website (Craft CMS). Read-only \u2014 it cannot create, edit, publish or delete anything.",
       "version": "0.1.0",
       "category": "content",
-      "keywords": ["craft", "craftcms", "cms", "graphql", "content", "drafts", "digistorm"],
+      "keywords": [
+        "craft",
+        "craftcms",
+        "cms",
+        "graphql",
+        "content",
+        "read-only",
+        "kirby"
+      ],
       "strict": true
     }
   ]

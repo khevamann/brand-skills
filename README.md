@@ -1,39 +1,42 @@
-# Castle Keys — Claude skills for our Craft CMS
+# Castle Keys — Claude skills for our website
 
-A skill that lets Claude search and read the website's content, and prepare changes as
-**drafts** you review and publish yourself. It cannot publish, delete, or edit live
-content — those are blocked in code, not by instruction.
-
-> **Keep this repo private.** It describes our content model and how to reach the CMS.
-> It contains no token: the token lives only in each person's environment.
-
-## What's in here
+A skill that lets Claude search and read the Kirby school website's content (Craft CMS).
+**Read-only.** It cannot change anything in the CMS.
 
 | Plugin | Skill | Use it when |
 |---|---|---|
-| `craft-cms` | [`craft-cms`](plugins/craft-cms/skills/craft-cms) | Looking something up on the website, auditing content, or preparing a wording or content change for review |
+| `craft-cms` | [`craft-cms`](plugins/craft-cms/skills/craft-cms) | Looking something up on the website, finding where a piece of copy lives, reading a page's text, or auditing content |
 
-## The arrangement
+## What it does
 
+```bash
+craft sections                            # the content model
+craft entries --search "why kirby" --status all
+craft page 177                            # a page's copy, nesting walked
+craft page 177 --raw                      # the same as JSON
+craft entry 177                           # one entry's own fields
+craft query --q '{ ... }'                 # any read query
 ```
-Claude prepares a draft  →  you review it in the Craft control panel  →  you publish
-```
 
-| Claude can | Claude cannot |
-|---|---|
-| Search and read entries, fields, asset metadata | Publish a draft |
-| Create a draft of an existing entry | Edit a live entry |
-| Create new content as an unpublished draft | Delete anything |
-| Write field values into a draft | Touch assets, categories, tags, globals, users |
-| Introspect the GraphQL schema | Change templates, plugins, or config |
+Pages on this site hold almost no content of their own — the copy sits two levels down
+in nested page-builder blocks. `craft page` walks that and labels every block with its
+type and id, so a change can be described exactly: *block #5665, field `richText_Text`*.
 
-Enforcement lives in
-[`scripts/lib/guard.mjs`](plugins/craft-cms/skills/craft-cms/scripts/lib/guard.mjs),
-with 21 tests pinning it. Every mutation Claude can reach is built by the script from
-an allowlist; free-form GraphQL is rejected outright if it contains a `mutation` or
-`subscription`. See
-[`references/draft-model.md`](plugins/craft-cms/skills/craft-cms/references/draft-model.md)
-for why each line is drawn where it is.
+## What it cannot do
+
+Nothing in the CMS changes. There is no command that creates, edits, publishes or
+deletes, and `craft query` rejects any document containing a mutation. Three separate
+reasons, any one of which would be enough:
+
+1. **No token is sent.** Write mutations only exist in a private schema with Edit
+   scope, which a token unlocks. The client sends no `Authorization` header at all.
+2. **No write command exists.** `craft --help` is the complete surface.
+3. **[`guard.mjs`](plugins/craft-cms/skills/craft-cms/scripts/lib/guard.mjs) refuses
+   them**, which holds even if the public schema is granted Edit scope later.
+
+`craft mutations` prints the live position. 12 tests pin this, run offline.
+
+Content changes happen in the Craft control panel.
 
 ## Install — Claude Code
 
@@ -44,43 +47,25 @@ Uses your local git credentials, so this repo being private is not a problem:
 /plugin install craft-cms@castle-keys
 ```
 
-To update later: `/plugin marketplace update castle-keys`.
+Update later with `/plugin marketplace update castle-keys`.
 
-Then set your credentials once — see
-[`references/setup.md`](plugins/craft-cms/skills/craft-cms/references/setup.md) for the
-full walkthrough, including which schema scope to grant the token:
+**There is nothing to configure.** The endpoint is hard-coded in
+[`scripts/lib/client.mjs`](plugins/craft-cms/skills/craft-cms/scripts/lib/client.mjs);
+change that one line to point at another environment.
 
-```bash
-mkdir -p ~/.config/craft-cms
-cat > ~/.config/craft-cms/env <<'CONF'
-CRAFT_GRAPHQL_ENDPOINT=https://YOUR-SITE.com/actions/graphql/api
-CRAFT_GRAPHQL_TOKEN=your-token-here
-CONF
-chmod 600 ~/.config/craft-cms/env
-```
-
-Verify:
-
-```bash
-# from the installed plugin directory, or a clone of this repo
-node plugins/craft-cms/skills/craft-cms/scripts/craft.mjs mutations
-```
-
-That prints what your token *could* mutate and what the tool blocks. Read it before
-you start — if something on the blocked list alarms you, tighten the token's schema
-so the capability does not exist at all.
+Requires Node 18+. No npm dependencies.
 
 ### A note on claude.ai and Cowork
 
-This skill only works in Claude Code. It needs network access to our CMS and a token
-from your machine's environment, and the claude.ai code sandbox has neither. Uploading
-it there would install a skill that cannot run.
+Claude Code only. The skill needs network access to the CMS, which the claude.ai code
+sandbox does not have.
 
-## Requirements
+## Two things worth knowing about the site
 
-- Claude Code, and Node 18 or newer (`node -v`). No npm dependencies.
-- A Craft GraphQL token bound to a private schema. Admins create these in the control
-  panel; see `references/setup.md`.
+- **The public GraphQL schema is readable with no token** — all 208 entries.
+- **Disabled entries and in-progress drafts are included.** `status: null` and
+  `drafts: true` work unauthenticated. Harmless on a test site; worth checking before
+  assuming production keeps unpublished content private.
 
 ## Working on this repo
 
@@ -88,10 +73,10 @@ it there would install a skill that cannot run.
 node --test plugins/craft-cms/skills/craft-cms/scripts/test/
 ```
 
-Those tests are the safety contract. The guard tests run with no credentials, which
-proves refusals happen before any network call. If you widen what the tool can do,
-the diff must touch `guard.mjs` and its tests together — that visibility is the point.
+Those tests are the read-only contract. They run offline, which is what proves refusals
+happen before any network call. If you ever widen what the tool can do, the diff must
+touch `guard.mjs` and its tests together.
 
-Adding a skill: create `plugins/<plugin>/skills/<name>/SKILL.md`, where the directory
-name matches the `name:` in the frontmatter, and register the plugin in
-`.claude-plugin/marketplace.json`.
+The draft-writing version of this skill — `createDraft` plus draft-scoped saves, with
+publishing and deletion blocked — is in git history at `a1b022a`. It needs a token with
+Edit scope on the sections you want; nothing here does.

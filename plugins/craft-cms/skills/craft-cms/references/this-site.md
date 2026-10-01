@@ -88,19 +88,23 @@ text field and nothing else.
   `*.cms.digistormhosting.com.au`.
 - **The endpoint is under the CP trigger:** `/admin/actions/graphql/api`, not
   `/actions/graphql/api`.
-- **The test site's public schema is enabled and read-only** — 208 entries readable
-  with no token, and `ping` is the only mutation. Drafting needs a token whose
-  schema grants edit scope on the sections you want.
+- **The public schema is enabled and read-only** — 208 entries readable with no token,
+  and `ping` is the only mutation. Verified with no `Authorization` header at all.
+- **Disabled entries and drafts are publicly readable.** `status: null` and
+  `drafts: true` work unauthenticated. Harmless on a test site; worth checking before
+  assuming production keeps unpublished content private.
 
 ## Worked example — reading a page
 
 ```bash
 craft entries --search "why kirby" --status all     # search index may be empty; fall back to:
 craft query --q '{ entries(status: null, limit: 300) { id title uri sectionHandle } }'
-craft entry 177                                     # core fields; names the structured ones
-craft schema ds_StandardPage_Entry                  # find contentBuilder
-craft query /tmp/page.graphql                       # two-level fragment query for the copy
+craft page 177                                      # the copy, nesting walked for you
+craft page 177 --raw                                # same as JSON, plus the query used
 ```
+
+`craft page` builds the two-level fragment query itself by introspecting the block
+types, so the field-name inconsistencies above do not matter when reading.
 
 The search index on the test site returned nothing for `why kirby` while the page
 existed at `admissions/why-kirby`. If a search comes back empty, list and filter

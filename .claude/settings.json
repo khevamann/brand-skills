@@ -4,11 +4,7 @@
       "Bash(curl:*)",
       "Bash(wget:*)",
       "Bash(http:*)",
-      "Bash(httpie:*)",
-      "Bash(gql:*)",
-      "Bash(npx graphql*)",
-      "Read(./.env)",
-      "Read(~/.config/craft-cms/env)"
+      "Bash(httpie:*)"
     ],
     "allow": [
       "Bash(node --test:*)",

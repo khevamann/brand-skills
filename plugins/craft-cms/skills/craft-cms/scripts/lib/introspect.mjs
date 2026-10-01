@@ -29,27 +29,29 @@ export async function rootFields(operation) {
   return data.__schema[`${operation}Type`]?.fields ?? [];
 }
 
-export async function mutationField(name) {
-  const data = await graphql(
-    `query ($name: String!) {
-      __type(name: $name) {
-        fields { name args { name description type { ${TYPE_REF} } } }
-      }
-    }`,
-    { name: 'Mutation' },
-  );
-  return (data.__type?.fields ?? []).find((f) => f.name === name) ?? null;
-}
-
 export async function typeFields(name) {
   const data = await graphql(
     `query ($name: String!) {
       __type(name: $name) {
         name kind description
-        fields { name description args { name } type { ${TYPE_REF} } }
+        fields { name description args { name type { kind } } type { ${TYPE_REF} } }
       }
     }`,
     { name },
   );
   return data.__type;
+}
+
+/** The concrete block types a nested-entry (Matrix) field can contain. */
+export async function possibleTypes(name) {
+  const data = await graphql(
+    `query ($name: String!) { __type(name: $name) { kind possibleTypes { name } } }`,
+    { name },
+  );
+  return data.__type?.possibleTypes ?? [];
+}
+
+/** True if the field cannot be selected without supplying an argument. */
+export function needsArgs(field) {
+  return (field.args ?? []).some((a) => a.type?.kind === 'NON_NULL');
 }
