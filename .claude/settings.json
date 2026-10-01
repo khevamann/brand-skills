@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(http:*)",
+      "Bash(httpie:*)",
+      "Bash(gql:*)",
+      "Bash(npx graphql*)",
+      "Read(./.env)",
+      "Read(~/.config/craft-cms/env)"
+    ],
+    "allow": [
+      "Bash(node --test:*)",
+      "Bash(node *scripts/craft.mjs:*)"
+    ]
+  }
+}

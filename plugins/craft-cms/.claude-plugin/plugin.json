@@ -1,0 +1,10 @@
+{
+  "name": "craft-cms",
+  "description": "Read-and-draft access to our Craft CMS website over its GraphQL API. Searching and reading content is unrestricted; writes are limited to drafts, with publishing, deletion and live edits blocked in code.",
+  "version": "0.1.0",
+  "author": {
+    "name": "khevamann"
+  },
+  "repository": "https://github.com/khevamann/castle-keys",
+  "keywords": ["craft", "craftcms", "cms", "graphql", "content", "drafts"]
+}

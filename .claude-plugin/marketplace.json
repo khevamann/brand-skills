@@ -1,0 +1,21 @@
+{
+  "name": "castle-keys",
+  "owner": {
+    "name": "khevamann"
+  },
+  "metadata": {
+    "description": "Claude skills for working with our Craft CMS website",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "craft-cms",
+      "source": "./plugins/craft-cms",
+      "description": "Read and search the Craft CMS website, and prepare content changes as drafts for a human to review and publish. Cannot publish, delete, or edit live content.",
+      "version": "0.1.0",
+      "category": "content",
+      "keywords": ["craft", "craftcms", "cms", "graphql", "content", "drafts", "digistorm"],
+      "strict": true
+    }
+  ]
+}
