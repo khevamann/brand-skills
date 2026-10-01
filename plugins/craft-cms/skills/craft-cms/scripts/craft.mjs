@@ -23,6 +23,9 @@ const USAGE = `craft — read-only access to the Craft CMS website
 
   ${ENDPOINT}
 
+START
+  craft overview [--from DIR]        What is here, what you can do, what you cannot
+
 FIND
   craft sections                     Sections and entry types on the site
   craft entries [opts]               Search or list entries
@@ -1126,6 +1129,93 @@ function pagesWithSameValue(corpus, value, excludePageId, profile) {
   return [...hits];
 }
 
+/**
+ * Orientation for someone meeting this site for the first time: what is here, what
+ * can be done, what cannot, and which command to run next. Everything is counted
+ * live rather than asserted, so it stays true as the site changes.
+ */
+async function cmdOverview(flags) {
+  const { pages, nested } = await fetchAllEntries();
+  const bySection = new Map();
+  for (const p of pages) {
+    if (!bySection.has(p.sectionHandle)) bySection.set(p.sectionHandle, []);
+    bySection.get(p.sectionHandle).push(p);
+  }
+
+  const roots = [...new Set(pages.map((p) => `${p.typeHandle}_Entry`))].sort();
+  const grammar = await buildGrammar(roots);
+  const allBlockTypes = [...new Set([...grammar.values()].flat())];
+
+  // Usage needs a page walk: the entries query does not return second-level nested
+  // blocks, so counting from it would report types as unused that are plainly in use.
+  let usage = null;
+  if (flags?.from) {
+    const { corpus } = await loadCorpus(flags);
+    const used = new Set(corpus.flatMap((c) => c.blocks.map((b) => b.__typename)));
+    usage = {
+      used: used.size,
+      unused: allBlockTypes.filter((t) => !used.has(t)).sort(),
+    };
+  }
+
+  const mutations = await rootFields('mutation').catch(() => []);
+
+  const lines = [
+    `SITE: ${ENDPOINT.replace(/\/admin.*$/, '')}`,
+    '',
+    'WHAT IS HERE',
+    ...[...bySection.entries()]
+      .sort((a, b) => b[1].length - a[1].length)
+      .map(([section, items]) => `  ${String(items.length).padStart(3)}  ${section}`),
+    `  ${String(nested.length).padStart(3)}  nested page-builder blocks, top level (not pages)`,
+    '',
+    `  ${allBlockTypes.length} block types available.`,
+  ];
+
+  if (usage) {
+    lines.push(
+      `  ${usage.used} in use. Unused and available: ` +
+        (usage.unused.map((t) => t.replace(/_Entry$/, '')).join(', ') || 'none'),
+    );
+  } else {
+    lines.push('  Run `craft blocks` for usage counts, or pass --from <export dir>.');
+  }
+
+  lines.push(
+    '',
+    'WHAT YOU CAN DO WITH THIS SKILL',
+    "  Read and search any content, including disabled entries and drafts.",
+    "  Read a page's copy with block ids, so a change can be named exactly.",
+    '  Audit the site: placeholder copy, empty blocks, broken links, repeated copy.',
+    '  Extract the live design system: tokens, utility classes, composition grammar.',
+    '  Export everything to disk and reason about the site as a whole.',
+    '  Brief a design tool, then check what came back and how far it reaches.',
+    '',
+    'WHAT YOU CANNOT DO WITH THIS SKILL',
+    `  Change anything. This endpoint exposes ${mutations.length} mutation` +
+      `${mutations.length === 1 ? '' : 's'} (${mutations.map((m) => m.name).join(', ') || 'none'})` +
+      ' and no token is sent.',
+    "  Create a new block type. Craft's API cannot touch the content model at all;",
+    '  that needs both a Craft settings change and a front-end component.',
+    '  Share a block between pages. Each nested block has a single owner.',
+    '  Change the design system. Tokens and CSS live in the front-end application.',
+    '',
+    'HOW CHANGES ACTUALLY GET MADE',
+    '  A person applies them in the Craft control panel, as a draft, and publishes',
+    '  after review. This skill works out precisely what to change and whether it is',
+    '  safe to change. See references/browser-apply.md for driving the control panel.',
+    '',
+    'START HERE',
+    '  craft export --out site-export            take a snapshot (a few minutes)',
+    '  craft audit --from site-export --links    what needs attention',
+    '  craft blocks                              the block vocabulary',
+    '  craft page <id>                           read one page',
+    '  craft brief <id> --from site-export       prepare a design change',
+  );
+
+  out(lines.join('\n'));
+}
+
 // --------------------------------------------------------------- schema
 
 async function cmdQuery(positional, flags) {
@@ -1190,6 +1280,8 @@ async function main() {
     case '--help':
     case '-h':
       return out(USAGE);
+    case 'overview':
+      return cmdOverview(flags);
     case 'sections':
       return cmdSections();
     case 'entries':

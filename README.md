@@ -7,6 +7,14 @@ A skill that lets Claude search and read the Kirby school website's content (Cra
 |---|---|---|
 | `craft-cms` | [`craft-cms`](plugins/craft-cms/skills/craft-cms) | Looking something up on the website, finding where a piece of copy lives, reading a page's text, or auditing content |
 
+## Start here
+
+```bash
+craft overview --from site-export   # what's here, what you can do, what you can't
+```
+
+That counts the site live and states the limits, so it stays true as things change.
+
 ## What it does
 
 ```bash
