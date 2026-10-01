@@ -104,12 +104,26 @@ async function cmdSections() {
     return;
   }
 
-  out('This token exposes no entry mutations. Deriving handles from recent entries instead:');
-  const query = `{ entries(limit: 200, status: null) { sectionHandle typeHandle } }`;
+  out('This token exposes no entry mutations (read-only schema). Deriving handles from entries:');
+  const query = `{ entries(limit: 500, status: null) { sectionHandle typeHandle } }`;
   assertReadOnly(query);
-  const data = await graphql(query);
-  const pairs = new Set(data.entries.map((e) => `${e.sectionHandle} / ${e.typeHandle}`));
-  out([...pairs].sort().join('\n'));
+  const data = await graphql(query, {}, { partial: true });
+
+  // Entries inside a Craft 5 nested-entry field belong to a field, not a section,
+  // so they come back with a null sectionHandle. They are not pages.
+  const sections = new Set();
+  const nested = new Set();
+  for (const e of data.entries) {
+    if (e.sectionHandle) sections.add(`${e.sectionHandle} / ${e.typeHandle}`);
+    else nested.add(e.typeHandle);
+  }
+  out(
+    'SECTIONS (section / entry type):\n' +
+      [...sections].sort().map((s) => `  ${s}`).join('\n') +
+      `\n\nNESTED ENTRY TYPES (${nested.size}) — page-builder blocks, not pages. ` +
+      'Not draftable by this tool:\n  ' +
+      [...nested].sort().join(', '),
+  );
 }
 
 const STATUS_MAP = { live: ['live'], disabled: ['disabled'], all: null };
@@ -172,7 +186,7 @@ async function cmdEntry(id) {
 
   const query = `query ($id: [QueryArgument]) { entry(id: $id, status: null) { ${leaves.join(' ')} } }`;
   assertReadOnly(query);
-  const data = await graphql(query, { id: [String(id)] });
+  const data = await graphql(query, { id: [String(id)] }, { partial: true });
 
   out({
     entry: data.entry,
@@ -208,12 +222,22 @@ async function cmdQuery(positional, flags) {
     document = source === '-' ? readFileSync(0, 'utf8') : readFileSync(source, 'utf8');
   }
   assertReadOnly(document);
-  out(await graphql(document, flags.variables ? JSON.parse(flags.variables) : {}));
+  const variables = flags.variables ? JSON.parse(flags.variables) : {};
+  out(await graphql(document, variables, { partial: true }));
 }
 
 async function cmdSchema(typeName) {
   if (typeName) {
-    const type = await typeFields(typeName);
+    // Craft 5 names entry types <entryType>_Entry, with no section prefix. Craft 4
+    // uses <section>_<entryType>_Entry. Guessing wrong gets Craft's opaque error,
+    // so point at the reliable way to find the real name.
+    const type = await typeFields(typeName).catch((err) => {
+      throw new CraftError(
+        `Could not introspect \`${typeName}\`.\n${err.message}\n\n` +
+          'Get a type name from the data rather than guessing it:\n' +
+          '  craft query --q \'{ entry(id: <id>) { __typename } }\'',
+      );
+    });
     if (!type) throw new CraftError(`No type named ${typeName}.`);
     out({
       type: type.name,

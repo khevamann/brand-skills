@@ -61,8 +61,22 @@ Useful fields on `EntryInterface`: `id`, `uid`, `title`, `slug`, `uri`, `url`,
 `author { fullName }`.
 
 **Entries are polymorphic.** `entries` returns `EntryInterface`; custom fields live
-on the concrete per-entry-type types, named `<section>_<entryType>_Entry`. To read
-custom fields across mixed types, use inline fragments:
+on the concrete per-entry-type types. Their names differ by major version:
+
+| | Object type | Save mutation |
+|---|---|---|
+| Craft 4 | `<section>_<entryType>_Entry` | `save_<section>_<entryType>_Entry` |
+| Craft 5 | `<entryType>_Entry` — **no section prefix** | `save_<section>_<entryType>_Entry` |
+
+Craft 5 made entry types global rather than section-scoped, so the object type drops
+the section but the mutation keeps it. Guessing the wrong form gets you Craft's
+opaque "Something went wrong" error, so read the name off the data instead:
+
+```graphql
+{ entry(id: 177) { __typename } }
+```
+
+To read custom fields across mixed types, use inline fragments:
 
 ```graphql
 {
@@ -173,6 +187,15 @@ than trusting it. `craft draft-create` already does this.
 - **Multi-site.** `siteId` / `site` arguments select the site; omitting them uses
   the primary site. This tool refuses to set `siteId` on writes, so drafts land on
   the primary site.
+- **Plugin fields can break an otherwise valid query.** SEOmatic declares `seomatic`
+  as `String` but returns an object, so any query selecting it fails with
+  `String cannot represent value: instance of ...MetaBundle`. Craft returns usable
+  `data` alongside that error; `client.mjs` passes reads through with a warning
+  rather than discarding the response.
+- **"Something went wrong when processing the GraphQL query."** is Craft refusing to
+  explain a validation failure. It nearly always means a name in the document does
+  not exist — a misspelled fragment type, field, or argument. Bisect the document by
+  dropping one fragment at a time.
 - **What GraphQL cannot do at all:** templates, plugins, config, the content model,
   user accounts. Those are code and control-panel concerns.
 

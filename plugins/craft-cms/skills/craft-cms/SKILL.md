@@ -36,8 +36,11 @@ in the Craft control panel — that is the intended division of labour.
    this token can reach. Do this once per session before any write.
 2. **Find the entry.** `$CRAFT entries --search "..." --section news` or
    `--status all` to include disabled entries.
-3. **Read it.** `$CRAFT entry <id>`. Structured fields (Matrix, relations) are listed
-   separately — query those with `$CRAFT query` and an explicit subselection.
+3. **Read it.** `$CRAFT entry <id>`. On our site a page's body is **not** on the entry —
+   it is two levels of nested blocks under `contentBuilder`. See
+   `references/this-site.md` for the shape and a ready-made query.
+   If a search returns nothing, list and filter before concluding the page is absent:
+   the search index is not always current.
 4. **Check what you may set.** `$CRAFT fields <id>` lists the settable arguments with their
    GraphQL types, and what the guard refuses.
 5. **Make a draft.** `$CRAFT draft-create <entryId> --name "Claude: shorten intro"`.
@@ -71,6 +74,8 @@ ask what you are about to do.
 
 ## Reference
 
+- `references/this-site.md` — **read this first.** Our actual content model: sections,
+  the two-level page-builder nesting, field naming, and where the copy really lives.
 - `references/craft-graphql-api.md` — the Craft GraphQL API: endpoint, auth, query
   arguments, mutation names and signatures, Matrix/structured content, gotchas.
 - `references/setup.md` — minting a token and the schema scope to give it.

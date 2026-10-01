@@ -43,8 +43,13 @@ export function loadConfig() {
 /**
  * Send a GraphQL request. Callers must have already passed the document through
  * the guard — this function deliberately knows nothing about permissions.
+ *
+ * `partial: true` accepts a response that carries both data and field-level
+ * errors, reporting the errors on stderr instead of throwing. Plugins
+ * mis-declare field types often enough (SEOmatic, for one) that one bad field
+ * would otherwise make a whole entry unreadable. Writes never pass this.
  */
-export async function graphql(query, variables = {}) {
+export async function graphql(query, variables = {}, { partial = false } = {}) {
   const { endpoint, token } = loadConfig();
 
   const res = await fetch(endpoint, {
@@ -68,7 +73,19 @@ export async function graphql(query, variables = {}) {
 
   if (body.errors?.length) {
     const messages = body.errors.map((e) => `  - ${e.message}`).join('\n');
-    throw new CraftError(`GraphQL errors (HTTP ${res.status}):\n${messages}`);
+    const usable = partial && body.data && Object.values(body.data).some((v) => v !== null);
+    if (!usable) {
+      // Craft masks validation failures behind one opaque message, so say what
+      // it usually means rather than leaving the caller to guess.
+      const opaque = body.errors.some((e) => /Something went wrong when processing/i.test(e.message));
+      const hint = opaque
+        ? '\n\nThat message is Craft refusing to explain itself. It almost always means a ' +
+          'name in the document does not exist: a misspelled fragment type, field, or argument. ' +
+          'Bisect the document — drop one fragment at a time — or check names with `craft schema <Type>`.'
+        : '';
+      throw new CraftError(`GraphQL errors (HTTP ${res.status}):\n${messages}${hint}`);
+    }
+    console.error(`WARNING: ${body.errors.length} field error(s), returning partial data:\n${messages}`);
   }
   if (!res.ok) {
     throw new CraftError(`HTTP ${res.status} from Craft.`);
