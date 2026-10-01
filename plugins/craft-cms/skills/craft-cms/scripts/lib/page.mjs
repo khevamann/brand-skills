@@ -6,6 +6,24 @@ import { graphql } from './client.mjs';
 import { assertReadOnly } from './guard.mjs';
 import { typeFields, possibleTypes, namedType, needsArgs } from './introspect.mjs';
 
+/**
+ * What to select from relation fields. Images and links are content — a tile with
+ * only an image is not an empty block, and a link list is not empty either.
+ */
+const RELATION_SELECTIONS = {
+  AssetInterface: 'id title url alt',
+  HyperLinkInterface: 'linkText linkUrl url target newWindow type',
+  EntryInterface: 'id title uri url status',
+};
+
+/**
+ * Built-in element relations. They are the same GraphQL types as content relations,
+ * so they must be excluded by name — selecting `revisions` would make every block
+ * look like it holds content, and bloat every query.
+ */
+const PLUMBING_RELATIONS =
+  /^(revisions|drafts|localized|ancestors|descendants|children|siblings|parent|author|authors|draftCreator|revisionCreator|currentRevision|canonical|next|prev|owner|site|sites)$/;
+
 const typeCache = new Map();
 export async function cachedTypeFields(name) {
   if (!typeCache.has(name)) typeCache.set(name, await typeFields(name));
@@ -33,6 +51,11 @@ export async function blockSelection(typeName, depth) {
     } else if (depth > 0 && /_MatrixField$/.test(named.name ?? '')) {
       const inner = await fieldSelection(named.name, depth - 1);
       if (inner) nestedParts.push(`${f.name} { ${inner} }`);
+    } else if (RELATION_SELECTIONS[named.name ?? ''] && !PLUMBING_RELATIONS.test(f.name)) {
+      // Assets, links and entry relations. These interfaces have no implementing
+      // types in this schema, so their fields are selected directly — an inline
+      // fragment on them fails with Craft's opaque validation error.
+      nestedParts.push(`${f.name} { ${RELATION_SELECTIONS[named.name]} }`);
     }
   }
   return `${leaves.join(' ')} ${nestedParts.join(' ')}`;

@@ -13,14 +13,28 @@ A skill that lets Claude search and read the Kirby school website's content (Cra
 craft sections                            # the content model
 craft entries --search "why kirby" --status all
 craft page 177                            # a page's copy, nesting walked
-craft page 177 --raw                      # the same as JSON
-craft entry 177                           # one entry's own fields
-craft query --q '{ ... }'                 # any read query
+craft blocks                              # the block vocabulary
+craft grammar                             # what may be nested where
+craft design-system --out design-system   # live tokens, classes, style guide
+craft export --out site-export            # the whole site to disk
+craft audit --from site-export --links    # placeholders, empty blocks, broken links
+craft brief 177 --out brief.md            # a design brief for one page
+craft diff 177 result.json                # are the proposed edits valid?
+craft scope 177 result.json               # do they stay on one page?
 ```
 
 Pages on this site hold almost no content of their own — the copy sits two levels down
 in nested page-builder blocks. `craft page` walks that and labels every block with its
 type and id, so a change can be described exactly: *block #5665, field `richText_Text`*.
+
+### The scope gate
+
+`craft scope` is the safety rail for automated editing. It exits `0` only when every
+proposed edit is confined to one page, and `3` with an explanation when a change reaches
+further — a shared entry referenced by other pages (it names them), copy that appears
+elsewhere, a presentation setting, a design-system change, or an invented block type.
+
+Nothing beyond a single page should be applied without a human deciding the scope.
 
 ## What it cannot do
 

@@ -60,7 +60,22 @@ Without a manifest, fall back to diffing the edited HTML against
 `site-export/pages/<id>.html` by section id, and expect to resolve within-block
 ambiguity by hand.
 
-## 3. Applying it
+## 3. Check the blast radius before calling anything ready
+
+```bash
+craft diff <pageId> result.json                      # are the edits even valid?
+craft scope <pageId> result.json --from site-export   # do they stay on one page?
+```
+
+`scope` exits `0` only when every edit is confined to the page. It exits `3` and
+explains itself when an edit touches a shared entry (naming the affected pages), changes
+copy that appears elsewhere, changes a presentation setting, or asks for a design-system
+change or a new block type.
+
+**Anything beyond one page is the user's decision, not yours.** Report how many pages are
+affected and which, then ask: this page only, all of them, or neither.
+
+## 4. Applying it
 
 The skill is read-only, so applying is a separate step:
 

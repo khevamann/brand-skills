@@ -51,3 +51,40 @@ itself — the log is for open questions, not settled practice.
   still present where it should say Kirby.
 - The `style-guide` page (id 2848, 64 blocks) appears to demo the whole vocabulary.
   Likely the single best reference to hand a design tool.
+
+## 2026-09-30 — building the design round trip
+
+**Did:** Added the vocabulary, design-system, audit, brief, diff and scope commands,
+all read-only. Nothing has been through a real design tool yet.
+
+**Worked:**
+- `relatedTo` measures blast radius exactly. The pre-footer entry 5037 is referenced by
+  6 pages, so an edit that looks local is not. This is what `craft scope` is built on.
+- Classifying copy vs presentation from **value spread across the whole site** rather
+  than from one value. "Intellectual Vitality" is 21 characters and is a heading; "md"
+  is 2 characters and is a spacing setting. Length cannot tell them apart; a field whose
+  values repeat from a set of three across 61 blocks is obviously a setting.
+- `HyperLinkInterface` and `AssetInterface` have **no implementing types**, so their
+  fields are selected directly. The earlier `... on HyperLink` failure was my error, not
+  a schema limitation. Links and images are readable now.
+
+**Broke:**
+- Selecting every relation field pulled in `revisions`, which made every block look
+  populated and hid genuinely empty ones. Built-in relations have to be excluded by
+  name — they are the same GraphQL types as content relations.
+- Skipping fields that have *any* arguments hid `contentBuilder` entirely. Craft's field
+  arguments are all optional; only a required argument should disqualify a field.
+- `/search` was reported as a broken link. It is a front-end route with no Craft entry.
+  Internal links now need `--links` to be called broken rather than merely unmatched.
+- Listing blocks (`ds_NewsLayoutBlock`, `ds_EventsLayoutBlock`) store nothing by design
+  and were reported as empty. They render content pulled from elsewhere.
+
+**Next time:**
+- Nothing has been applied through the control panel yet. The first real round trip is
+  where the brittle parts will show up — record which CP interactions are slow or
+  fragile, because that is what decides whether browser automation is viable.
+- No exact cross-page duplicate copy exists on this site today, so the divergence check
+  in `craft scope` is unit-tested but unproven against real content.
+- 71 placeholder findings are live, including `Lorem ipsum` and "Digistorm School" demo
+  copy across news, events and academics pages. Worth fixing before any design work, so
+  a design tool is not shown placeholder text as if it were real.

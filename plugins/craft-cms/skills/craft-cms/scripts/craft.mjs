@@ -10,6 +10,14 @@ import { graphql, ENDPOINT, CraftError } from './lib/client.mjs';
 import { assertReadOnly, isDenied, GuardError } from './lib/guard.mjs';
 import { rootFields, typeFields, renderType, namedType, needsArgs } from './lib/introspect.mjs';
 import { cachedTypeFields, contentFieldsOf, fetchPageTree, flattenBlocks } from './lib/page.mjs';
+import { buildGrammar, leafTypes } from './lib/grammar.mjs';
+import { extractTokens, extractClasses, groupClasses, extractModes } from './lib/designsystem.mjs';
+import {
+  findPlaceholders, findEmptyBlocks, findDuplicateCopy, findBrokenInternalLinks,
+  collectExternalLinks, copyValues, relationValues,
+} from './lib/audit.mjs';
+import { RADIUS, manifestConcerns, overallVerdict, exitCodeFor } from './lib/scope.mjs';
+import { profileFromCorpus, classifyField, COPY, PRESENTATION } from './lib/fields.mjs';
 
 const USAGE = `craft — read-only access to the Craft CMS website
 
@@ -31,6 +39,14 @@ READ
   craft blocks                       The block vocabulary: types, usage, which fields hold copy
   craft export [--out DIR]           Whole site to disk: block trees, rendered HTML, inventory
       --no-html                      Skip the rendered HTML fetches
+  craft grammar                      Which block types are allowed inside which fields
+  craft design-system [--out DIR]    Extract the live tokens, classes, grammar and style guide
+  craft audit [--from DIR] [--links] Content checks: placeholders, empty blocks, broken links
+  craft brief <id> [--out FILE]      A paste-ready design brief for one page
+  craft diff <id> <file.json|.html>  What an edited artefact would change (checks only)
+  craft scope <id> <manifest.json>   Blast radius of a change: one page, or wider?
+      --from DIR                     Use an exported corpus to detect repeated copy
+      Exit 0 = single page, 3 = needs confirmation or impossible
   craft query <file|->               Run a GraphQL query from a file or stdin
   craft query --q "{ ping }"         Run an inline GraphQL query
   craft schema [TypeName]            Query root fields, or one type's fields
@@ -412,6 +428,685 @@ ${Object.entries(byType).sort((a, b) => b[1] - a[1]).map(([t, n]) => `- ${t} —
 `;
 }
 
+/**
+ * Which block types may be placed inside which fields. A page's existing blocks
+ * show what someone chose; the schema's union types show what is allowed.
+ */
+async function cmdGrammar(flags) {
+  const { pages } = await fetchAllEntries();
+  const roots = [...new Set(pages.map((p) => `${p.typeHandle}_Entry`))].sort();
+  const grammar = await buildGrammar(roots);
+
+  const allTypes = [...new Set([...grammar.values()].flat())].sort();
+  const leaves = leafTypes(grammar, allTypes);
+
+  if (flags.json) {
+    return out({ roots, grammar: Object.fromEntries(grammar), leaves });
+  }
+
+  const lines = ['COMPOSITION GRAMMAR', ''];
+  for (const [slot, allowed] of [...grammar].sort()) {
+    lines.push(`${slot}`);
+    lines.push(`    ${allowed.length ? allowed.join(', ') : '(nothing)'}`);
+    lines.push('');
+  }
+  lines.push(
+    `LEAF BLOCKS (${leaves.length}) — these nest nothing, so this is where copy lives:`,
+    '  ' + leaves.join(', '),
+    '',
+    'A design can only nest blocks where this grammar allows it. Anything else has to',
+    'go in ds_EmbedBlock as raw HTML, or be built by Digistorm as a new block type.',
+  );
+  out(lines.join('\n'));
+}
+
+/**
+ * Extract the live design system — tokens, modes, utility classes — plus the block
+ * grammar, and write it as a reference a design tool can be briefed with.
+ */
+async function cmdDesignSystem(flags) {
+  const { mkdirSync, writeFileSync, readFileSync, existsSync } = await import('node:fs');
+  const dir = flags.out ?? 'design-system';
+  mkdirSync(dir, { recursive: true });
+
+  // The style-guide page demonstrates the whole vocabulary, so it is the best
+  // single source for both the tokens and the markup patterns.
+  const source = flags.from ?? (await findStyleGuide());
+  const html = flags.html && existsSync(flags.html)
+    ? readFileSync(flags.html, 'utf8')
+    : await (await fetch(source.url, { headers: { 'User-Agent': 'Mozilla/5.0' } })).text();
+
+  const tokens = extractTokens(html);
+  const modes = extractModes(tokens);
+  const classes = extractClasses(html);
+  const { groups, other } = groupClasses(classes);
+
+  const { pages } = await fetchAllEntries();
+  const roots = [...new Set(pages.map((p) => `${p.typeHandle}_Entry`))].sort();
+  const grammar = await buildGrammar(roots);
+  const allTypes = [...new Set([...grammar.values()].flat())].sort();
+
+  writeFileSync(`${dir}/style-guide.html`, html);
+  writeFileSync(
+    `${dir}/tokens.json`,
+    JSON.stringify(
+      Object.fromEntries([...tokens].map(([sel, map]) => [sel, Object.fromEntries(map)])),
+      null,
+      2,
+    ),
+  );
+  writeFileSync(
+    `${dir}/classes.json`,
+    JSON.stringify(Object.fromEntries([...classes].sort((a, b) => b[1] - a[1])), null, 2),
+  );
+  writeFileSync(`${dir}/grammar.json`, JSON.stringify(Object.fromEntries(grammar), null, 2));
+  writeFileSync(
+    `${dir}/DESIGN-SYSTEM.md`,
+    designSystemDoc({ source, tokens, modes, groups, other, grammar, allTypes }),
+  );
+
+  out({
+    written: dir,
+    source: `${source.title} (${source.url})`,
+    files: ['DESIGN-SYSTEM.md', 'tokens.json', 'classes.json', 'grammar.json', 'style-guide.html'],
+    tokenGroups: [...tokens.keys()],
+    modes,
+    classes: classes.size,
+    blockTypes: allTypes.length,
+    next: 'Hand DESIGN-SYSTEM.md and style-guide.html to the design tool. See references/design-handoff.md.',
+  });
+}
+
+async function findStyleGuide() {
+  const { pages } = await fetchAllEntries();
+  const sg = pages.find((p) => /style[- ]?guide/i.test(p.title ?? '') || /style-guide/.test(p.uri ?? ''));
+  if (!sg?.url) throw new CraftError('No style-guide page found. Pass --from-url or --html <file>.');
+  return sg;
+}
+
+function designSystemDoc({ source, tokens, modes, groups, other, grammar, allTypes }) {
+  const root = tokens.get(':root') ?? new Map();
+  const colour = [...root].filter(([k]) => /^--color-/.test(k));
+  const sample = (map, pattern, limit = 40) =>
+    [...map].filter(([k]) => pattern.test(k)).slice(0, limit)
+      .map(([k, v]) => `| \`${k}\` | \`${v}\` |`).join('\n');
+
+  return `# Design system — extracted from the live site
+
+Generated by \`craft design-system\` from **${source.title}** (${source.url}).
+Everything below is read off the rendered page, so it cannot drift from what the site
+actually renders. Regenerate rather than edit.
+
+## The one rule
+
+**Designs must be built from the existing block types.** The front end is a separate
+Nuxt application that renders a Vue component per Craft entry type. A block type it has
+no component for renders as nothing. New block types require both a Craft settings
+change and a front-end change — neither is reachable through the CMS API, which cannot
+touch the content model at all.
+
+Where a design genuinely cannot be expressed in these blocks, the escape hatch is
+\`ds_EmbedBlock\`, whose \`embed_Code\` field holds raw HTML and is injected on
+hydration. Markup there should use the tokens and classes below so it looks native.
+
+## Display modes
+
+${modes.map((m) => `- \`data-mode="${m}"\` — ${tokens.get(`mode:${m}`)?.size ?? 0} tokens`).join('\n')}
+
+Each mode redefines the same token names, so a block's appearance comes from the mode
+it sits in, not from hard-coded colours. **Never hard-code a colour**; use the token.
+
+## Colour tokens
+
+${colour.length} colour tokens on \`:root\`. The brand scale:
+
+| Token | Value |
+|---|---|
+${sample(root, /^--color-brand-\d+$/, 14)}
+
+Semantic colour tokens resolve per mode. Read \`tokens.json\` for the full set
+including \`--color-neutral-*\`, \`--color-brand-opacity-*\` and \`--color-brand-accent\`.
+
+## Typography and surface tokens
+
+| Token | Value |
+|---|---|
+${sample(root, /^--(text|surface|font|leading|tracking)-/, 24)}
+
+## Utility classes in use
+
+These are the classes the site's own markup uses. Prefer them over ad-hoc styles.
+
+${[...groups].filter(([, v]) => v.length).map(([prefix, list]) =>
+  `### \`${prefix}-*\` (${list.length})\n\n${list.slice(0, 18).map((c) => `- \`${c.cls}\` (${c.n}×)`).join('\n')}`,
+).join('\n\n')}
+
+Plus ${other.length} generic utility classes (Tailwind spacing, flex, grid, responsive
+prefixes). See \`classes.json\`.
+
+## Block vocabulary
+
+${allTypes.length} block types. Run \`craft blocks\` for usage counts and, for each type,
+which fields hold copy versus presentation settings, with real example values.
+
+## Composition grammar
+
+Which block types are allowed in which slots:
+
+${[...grammar].sort().map(([slot, allowed]) =>
+  `- **\`${slot}\`** → ${allowed.length ? allowed.map((a) => `\`${a}\``).join(', ') : '_nothing_'}`,
+).join('\n')}
+
+## Constraints a design must respect
+
+1. Only the block types above exist. Nothing else renders.
+2. Nesting must follow the grammar above.
+3. Blocks cannot be shared between pages — each has a single owner. A repeated
+   pattern is a convention applied per page, not one reusable object.
+4. Colours and spacing come from tokens and utility classes, never literals.
+5. Rich-text fields keep classes (existing content contains
+   \`<h4 class="text-lead-text">\`), so copy can carry design-system classes.
+6. \`ds_EmbedBlock\` content renders client-side only — invisible to static snapshots
+   and weaker for SEO. Use it deliberately, not by default.
+
+## Deliverable format
+
+Any design change must come back as an edit manifest keyed by Craft block id, not as
+HTML alone — see \`references/design-handoff.md\`. Every block renders as
+\`<section id="<craft block id>">\`, so page-level mapping is mechanical, but nothing in
+the markup says which element was which field.
+`;
+}
+
+/**
+ * Load a corpus written by `craft export`, so audits and briefs run instantly
+ * instead of re-crawling. Falls back to a live walk when no corpus is given.
+ */
+async function loadCorpus(flags) {
+  const { readFileSync, existsSync, readdirSync } = await import('node:fs');
+  const dir = flags.from;
+
+  if (dir && existsSync(`${dir}/index.json`)) {
+    const index = JSON.parse(readFileSync(`${dir}/index.json`, 'utf8'));
+    const corpus = [];
+    const htmlByPage = new Map();
+    for (const row of index) {
+      const file = `${dir}/pages/${row.id}.json`;
+      if (!existsSync(file)) continue;
+      const { page, blocks, tree } = JSON.parse(readFileSync(file, 'utf8'));
+      corpus.push({ page, blocks, tree });
+      const htmlFile = `${dir}/pages/${row.id}.html`;
+      htmlByPage.set(row.id, {
+        uri: page.uri,
+        html: existsSync(htmlFile) ? readFileSync(htmlFile, 'utf8') : null,
+      });
+    }
+    return { corpus, htmlByPage, source: dir, index };
+  }
+
+  if (dir) throw new CraftError(`No corpus at ${dir}. Run \`craft export --out ${dir}\` first.`);
+
+  process.stderr.write('No --from corpus given; walking the live site.\n');
+  const { results } = await walkSite(Number(flags.depth ?? 3));
+  return {
+    corpus: results.map((r) => ({ page: r.page, blocks: r.blocks, tree: r.tree })),
+    htmlByPage: new Map(),
+    source: 'live',
+  };
+}
+
+/** Content checks: placeholders, empty blocks, broken links, repeated copy. */
+async function cmdAudit(flags) {
+  const { corpus, htmlByPage, source } = await loadCorpus(flags);
+  const origin = corpus.find((c) => c.page.url)?.page.url?.match(/^https?:\/\/[^/]+/)?.[0] ?? '';
+  const knownUris = corpus.map((c) => c.page.uri).filter(Boolean);
+
+  const profile = profileFromCorpus(corpus);
+  const placeholders = findPlaceholders(corpus, profile);
+  const empties = findEmptyBlocks(corpus, profile);
+  const duplicates = findDuplicateCopy(corpus, 60, profile);
+  const brokenInternal = htmlByPage.size ? findBrokenInternalLinks(htmlByPage, knownUris, origin) : [];
+  const noBlocks = corpus.filter((c) => c.blocks.length === 0);
+
+  let internalChecked = null;
+  if (flags.links && brokenInternal.length && origin) {
+    internalChecked = [];
+    process.stderr.write(`verifying ${brokenInternal.length} internal links…\n`);
+    const unique = [...new Set(brokenInternal.map((f) => f.link))];
+    const statuses = new Map();
+    for (const link of unique) {
+      try {
+        const res = await fetch(origin + link, { redirect: 'follow', signal: AbortSignal.timeout(12000) });
+        statuses.set(link, res.status);
+      } catch (err) {
+        statuses.set(link, err.message);
+      }
+    }
+    for (const f of brokenInternal) {
+      const status = statuses.get(f.link);
+      if (status !== 200) internalChecked.push({ ...f, status });
+    }
+  }
+
+  let externalResults = [];
+  if (flags.links && htmlByPage.size) {
+    const links = collectExternalLinks(htmlByPage, origin);
+    process.stderr.write(`checking ${links.size} external links…\n`);
+    for (const [url, pages] of links) {
+      let status = null;
+      let error = null;
+      try {
+        const res = await fetch(url, { method: 'HEAD', redirect: 'follow', signal: AbortSignal.timeout(12000) });
+        status = res.status;
+      } catch (err) {
+        error = err.message;
+      }
+      if (error || status >= 400) externalResults.push({ url, status, error, pages: [...pages] });
+    }
+  }
+
+  const report = {
+    source,
+    pages: corpus.length,
+    blocks: corpus.reduce((n, c) => n + c.blocks.length, 0),
+    findings: {
+      placeholderCopy: placeholders.length,
+      emptyBlocks: empties.length,
+      pagesWithNoBlocks: noBlocks.length,
+      internalLinksWithNoCraftPage: brokenInternal.length,
+      internalLinksActuallyBroken: internalChecked ? internalChecked.length : 'not checked (pass --links)',
+      repeatedCopyAcrossPages: duplicates.length,
+      brokenExternalLinks: flags.links ? externalResults.length : 'not checked (pass --links)',
+    },
+  };
+
+  if (flags.json) {
+    return out({ ...report, placeholders, empties, duplicates, brokenInternal, externalResults });
+  }
+
+  const lines = [`CONTENT AUDIT — ${report.pages} pages, ${report.blocks} blocks (source: ${source})`, ''];
+
+  section(lines, `PLACEHOLDER COPY (${placeholders.length})`, placeholders.map(
+    (f) => `  ${f.status === 'live' ? 'LIVE' : f.status.toUpperCase()}  ${f.page}  #${f.blockId} ${f.field}\n        ${f.issue}: ${f.excerpt}`,
+  ));
+
+  section(lines, `PAGES WITH NO CONTENT BLOCKS (${noBlocks.length})`, noBlocks.map(
+    (c) => `  ${c.page.status}  ${c.page.uri ?? '(no uri)'} — ${c.page.title}`,
+  ));
+
+  section(lines, `EMPTY BLOCKS (${empties.length})`, empties.slice(0, 25).map(
+    (f) => `  ${f.page}  #${f.blockId} ${f.type}`,
+  ), empties.length > 25 ? `  … and ${empties.length - 25} more` : null);
+
+  if (internalChecked) {
+    section(lines, `BROKEN INTERNAL LINKS (${internalChecked.length} verified over HTTP)`,
+      internalChecked.map((f) => `  ${f.status}  ${f.page} → ${f.link}`));
+  } else {
+    const unique = [...new Set(brokenInternal.map((f) => f.link))];
+    section(lines, `INTERNAL LINKS WITH NO CRAFT ENTRY (${unique.length} distinct)`,
+      unique.map((l) => `  ${l}  (on ${brokenInternal.filter((f) => f.link === l).length} pages)`),
+      unique.length ? '  Some of these are front-end routes rather than broken. Pass --links to verify.' : null);
+  }
+
+  if (flags.links) {
+    section(lines, `UNREACHABLE EXTERNAL LINKS (${externalResults.length})`, externalResults.map(
+      (f) => `  ${f.status ?? 'ERR'}  ${f.url}\n        on: ${f.pages.slice(0, 4).join(', ')}`,
+    ));
+  } else {
+    lines.push('EXTERNAL LINKS: not checked. Pass --links to verify them.', '');
+  }
+
+  section(lines, `COPY REPEATED ACROSS PAGES (${duplicates.length})`, duplicates.slice(0, 12).map(
+    (d) => `  ${d.pages} pages  ${JSON.stringify(d.value.slice(0, 80))}\n        ${d.uses.map((u) => `${u.page}#${u.blockId}`).join(', ')}`,
+  ), duplicates.length
+    ? '  These are candidates for a shared component. This CMS cannot share a block\n  between pages, so they stay a convention — or become the case for a new block type.'
+    : null);
+
+  out(lines.join('\n'));
+}
+
+function section(lines, heading, items, footer) {
+  lines.push(heading);
+  lines.push(items.length ? items.join('\n') : '  none');
+  if (footer) lines.push(footer);
+  lines.push('');
+}
+
+/**
+ * Assemble a paste-ready brief for a design tool: the page as it stands with block
+ * ids, what may be placed where, and the format the result has to come back in.
+ */
+async function cmdBrief(id, flags) {
+  const core = await fetchEntryCore(id);
+  const profile = flags.from ? profileFromCorpus((await loadCorpus(flags)).corpus) : null;
+  const { entry, contentFields } = await fetchPageTree(core, Number(flags.depth ?? 3));
+  if (!entry) throw new CraftError(`${core.__typename} has no nested content fields.`);
+  const blocks = flattenBlocks(entry, contentFields);
+
+  const rootType = core.__typename;
+  const grammar = await buildGrammar([rootType]);
+  const slots = [...grammar].filter(([slot]) => slot.startsWith(`${rootType}.`));
+
+  const lines = [
+    `# Design brief — ${entry.title}`,
+    '',
+    `Page: ${entry.url ?? entry.uri}`,
+    `Craft entry: ${entry.id} (${rootType}), status ${entry.status}`,
+    '',
+    '## Non-negotiable constraints',
+    '',
+    'This page is stored in a CMS with a fixed set of block types, rendered by a separate',
+    'front-end application. **Only the block types listed below exist.** A design using',
+    'anything else cannot be stored or rendered, and the CMS API cannot create new block',
+    'types — that needs a change by the agency that built the site.',
+    '',
+    'Use the design system in `DESIGN-SYSTEM.md` and the rendered reference in',
+    '`style-guide.html`. Colours and spacing come from the tokens and utility classes',
+    'documented there, never from literal values.',
+    '',
+    'Blocks cannot be shared between pages. A pattern repeated across pages is a',
+    'convention applied per page, not one reusable object.',
+    '',
+    '## What may be placed on this page',
+    '',
+    ...slots.map(([slot, allowed]) =>
+      `- \`${slot.split('.')[1]}\` accepts: ${allowed.map((a) => `\`${a.replace(/_Entry$/, '')}\``).join(', ')}`,
+    ),
+    '',
+    'Where a block nests further, see `grammar.json`.',
+    '',
+    '## The page as it stands',
+    '',
+    'Each block below is a real CMS object. **Keep the ids** — they are how your changes',
+    'get applied.',
+    '',
+  ];
+
+  for (const b of blocks) {
+    const indent = '  '.repeat(b._depth);
+    lines.push(`${indent}- **#${b.id}** \`${String(b.__typename).replace(/_Entry$/, '')}\`${b.title ? ` — ${b.title}` : ''}`);
+    for (const { field, value } of copyValues(b, profile)) {
+      const text = value.replace(/\s+/g, ' ').trim();
+      lines.push(`${indent}  - \`${field}\`: ${JSON.stringify(text.slice(0, 200))}${text.length > 200 ? ' …' : ''}`);
+    }
+    for (const { field, items } of relationValues(b)) {
+      const described = items
+        .map((it) => it.url ?? it.linkUrl ?? it.uri ?? it.title ?? it.linkText)
+        .filter(Boolean)
+        .slice(0, 3)
+        .join(', ');
+      if (described) lines.push(`${indent}  - \`${field}\` (image/link): ${described}`);
+    }
+  }
+
+  lines.push(
+    '',
+    '## How to return the result',
+    '',
+    'Return **both**:',
+    '',
+    '1. The edited HTML.',
+    '2. An edit manifest in exactly this shape, so the changes can be applied to the CMS:',
+    '',
+    '```json',
+    '{',
+    `  "pageId": "${entry.id}",`,
+    '  "edits": [',
+    '    { "blockId": "<id from the list above>", "field": "<field name from the list above>", "value": "<new value>" }',
+    '  ],',
+    '  "newBlocks": [',
+    '    { "afterBlockId": "<id>", "type": "ds_EmbedBlock", "field": "embed_Code", "value": "<raw HTML>" }',
+    '  ],',
+    '  "unmapped": ["anything you changed that does not fit a field above"]',
+    '}',
+    '```',
+    '',
+    'The `unmapped` list matters: put anything structural there rather than forcing it',
+    'into a field. It will be reviewed by a human instead of being silently dropped.',
+    '',
+    '`ds_EmbedBlock` is the only way to add markup the block types cannot express. Its',
+    'content renders client-side only, so use it deliberately.',
+  );
+
+  const doc = lines.join('\n');
+  if (flags.out) {
+    const { writeFileSync } = await import('node:fs');
+    writeFileSync(flags.out, doc);
+    return out({ written: flags.out, page: entry.title, blocks: blocks.length, slots: slots.length });
+  }
+  out(doc);
+}
+
+/**
+ * Check what an edited artefact would change. Accepts an edit manifest (validated
+ * against the live page) or an edited HTML file (compared by block id).
+ */
+async function cmdDiff(id, file, flags) {
+  if (!file) throw new GuardError('Pass the edited file: `craft diff <pageId> <file.json|file.html>`');
+  const { readFileSync } = await import('node:fs');
+  const body = readFileSync(file, 'utf8');
+
+  const core = await fetchEntryCore(id);
+  const { entry, contentFields } = await fetchPageTree(core, Number(flags.depth ?? 3));
+  if (!entry) throw new CraftError(`${core.__typename} has no nested content fields.`);
+  const blocks = flattenBlocks(entry, contentFields);
+  const byId = new Map(blocks.map((b) => [String(b.id), b]));
+
+  if (file.endsWith('.json')) {
+    const manifest = JSON.parse(body);
+    const checks = [];
+    for (const edit of manifest.edits ?? []) {
+      const block = byId.get(String(edit.blockId));
+      if (!block) {
+        checks.push({ ok: false, ...edit, problem: 'no such block on this page' });
+        continue;
+      }
+      const type = await cachedTypeFields(block.__typename).catch(() => null);
+      const exists = (type?.fields ?? []).some((f) => f.name === edit.field);
+      const current = block[edit.field];
+      checks.push({
+        ok: exists,
+        blockId: edit.blockId,
+        type: block.__typename,
+        field: edit.field,
+        problem: exists ? undefined : `\`${edit.field}\` is not a field of ${block.__typename}`,
+        unchanged: exists && current === edit.value ? true : undefined,
+        from: typeof current === 'string' ? current.slice(0, 120) : current,
+        to: typeof edit.value === 'string' ? edit.value.slice(0, 120) : edit.value,
+      });
+    }
+    return out({
+      page: { id: entry.id, title: entry.title },
+      manifestFor: manifest.pageId,
+      pageMismatch: String(manifest.pageId) !== String(entry.id) ? 'manifest targets a different page' : undefined,
+      valid: checks.filter((c) => c.ok && !c.unchanged).length,
+      problems: checks.filter((c) => !c.ok),
+      noChange: checks.filter((c) => c.unchanged).length,
+      edits: checks,
+      newBlocks: manifest.newBlocks ?? [],
+      unmapped: manifest.unmapped ?? [],
+      note: 'This skill cannot apply changes. Apply them in the control panel, as a draft.',
+    });
+  }
+
+  // HTML: every block renders as <section id="<block id>">, so compare by id.
+  const sectionIds = [...body.matchAll(/<section[^>]*\sid="(\d+)"/g)].map((m) => m[1]);
+  const present = new Set(sectionIds);
+  const original = blocks.map((b) => String(b.id));
+
+  const textOf = (html, blockId) => {
+    const start = html.search(new RegExp(`<section[^>]*\\sid="${blockId}"`));
+    if (start < 0) return null;
+    return html.slice(start, start + 4000).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  };
+
+  const changed = [];
+  for (const b of blocks) {
+    if (!present.has(String(b.id))) continue;
+    const editedText = textOf(body, b.id);
+    for (const { field, value } of copyValues(b)) {
+      const plain = value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+      const probe = plain.slice(0, 60);
+      if (probe && editedText && !editedText.includes(probe)) {
+        changed.push({ blockId: b.id, type: b.__typename, field, currentValue: plain.slice(0, 120) });
+      }
+    }
+  }
+
+  out({
+    page: { id: entry.id, title: entry.title },
+    blocksInCms: original.length,
+    blocksInFile: sectionIds.length,
+    removed: original.filter((x) => !present.has(x)),
+    added: sectionIds.filter((x) => !byId.has(x)),
+    reordered: sectionIds.filter((x) => byId.has(x)).join(',') !== original.filter((x) => present.has(x)).join(','),
+    fieldsWhoseTextNoLongerAppears: changed,
+    note:
+      'HTML alone cannot say which element holds which field, so this reports where a ' +
+      'current value went missing, not the new value. Ask the design tool for an edit ' +
+      'manifest (craft brief includes the format) to get an exact changeset.',
+  });
+}
+
+/**
+ * Classify a proposed change by how far it reaches. The question is not whether an
+ * edit is correct but whether it is confined to one page: shared entries, repeated
+ * copy and design-system changes all look local in a manifest and are not.
+ */
+async function cmdScope(id, file, flags) {
+  if (!file) throw new GuardError('Usage: craft scope <pageId> <manifest.json>');
+  const { readFileSync } = await import('node:fs');
+  const manifest = JSON.parse(readFileSync(file, 'utf8'));
+
+  const core = await fetchEntryCore(id);
+  const { entry, contentFields } = await fetchPageTree(core, Number(flags.depth ?? 3));
+  const owned = new Map((entry ? flattenBlocks(entry, contentFields) : []).map((b) => [String(b.id), b]));
+
+  const items = [...manifestConcerns(manifest)];
+  const corpus = flags.from ? (await loadCorpus(flags)).corpus : null;
+  const profile = corpus ? profileFromCorpus(corpus) : null;
+  if (!profile) {
+    process.stderr.write(
+      'No --from corpus: falling back to field-name rules for copy vs presentation.\n' +
+      'Pass --from <export dir> for a verdict based on how the site actually uses each field.\n',
+    );
+  }
+
+  for (const edit of manifest.edits ?? []) {
+    const blockId = String(edit.blockId);
+    const block = owned.get(blockId);
+
+    if (!block) {
+      // Not part of this page's own content. Either it belongs to another page, or
+      // it is a standalone entry referenced by relation — which is the genuinely
+      // dangerous case, because one edit changes every page pointing at it.
+      const referencing = await pagesReferencing(blockId);
+      const target = await fetchEntryCore(blockId).catch(() => null);
+      items.push({
+        radius: RADIUS.NEEDS_CONFIRMATION,
+        what: `#${blockId} ${edit.field}`,
+        why: target?.sectionHandle
+          ? `\`${target.title}\` is a shared ${target.sectionHandle} entry, referenced by ` +
+            `${referencing.length} page${referencing.length === 1 ? '' : 's'}: ` +
+            referencing.slice(0, 6).map((r) => r.uri ?? r.title).join(', ') +
+            (referencing.length > 6 ? ', …' : '')
+          : 'Not part of this page. Editing it changes content this page does not own.',
+        affectedPages: referencing.map((r) => r.uri ?? r.title),
+      });
+      continue;
+    }
+
+    const kind = classifyField(block.__typename, edit.field, profile);
+
+    // A value repeated on other pages: editing it here makes the pages diverge,
+    // and editing it everywhere is a site-wide change.
+    const elsewhere = corpus ? pagesWithSameValue(corpus, block[edit.field], id, profile) : [];
+    if (elsewhere.length) {
+      items.push({
+        radius: RADIUS.NEEDS_CONFIRMATION,
+        what: `#${blockId} ${edit.field}`,
+        why:
+          `The current value also appears on ${elsewhere.length} other page` +
+          `${elsewhere.length === 1 ? '' : 's'}: ${elsewhere.slice(0, 5).join(', ')}. ` +
+          'Changing it here alone makes them diverge.',
+        affectedPages: elsewhere,
+      });
+      continue;
+    }
+
+    if (kind === PRESENTATION) {
+      items.push({
+        radius: RADIUS.NEEDS_CONFIRMATION,
+        what: `#${blockId} ${edit.field}`,
+        why:
+          `\`${edit.field}\` is a presentation setting, not copy. These are usually meant ` +
+          'to be consistent across the site, so confirm whether this is one page or all.',
+      });
+      continue;
+    }
+
+    items.push({
+      radius: RADIUS.PAGE,
+      what: `#${blockId} ${edit.field}`,
+      why: `${kind === COPY ? 'Copy' : 'Content'} on a block owned only by this page.`,
+    });
+  }
+
+  const verdict = overallVerdict(items);
+  const grouped = {
+    page: items.filter((i) => i.radius === RADIUS.PAGE),
+    needsConfirmation: items.filter((i) => i.radius === RADIUS.NEEDS_CONFIRMATION),
+    notPossible: items.filter((i) => i.radius === RADIUS.NOT_POSSIBLE),
+  };
+
+  if (flags.json) {
+    out({ page: { id: core.id, title: core.title }, verdict, ...grouped });
+  } else {
+    const lines = [`SCOPE — ${core.title} (entry ${core.id})`, '', `VERDICT: ${verdict.toUpperCase()}`, ''];
+    section(lines, `CONFINED TO THIS PAGE (${grouped.page.length})`,
+      grouped.page.map((i) => `  ${i.what} — ${i.why}`));
+    section(lines, `NEEDS YOUR CONFIRMATION (${grouped.needsConfirmation.length})`,
+      grouped.needsConfirmation.map((i) => `  ${i.what}\n        ${i.why}`));
+    section(lines, `NOT POSSIBLE THROUGH THE CMS (${grouped.notPossible.length})`,
+      grouped.notPossible.map((i) => `  ${i.what}\n        ${i.why}`));
+    lines.push(
+      verdict === RADIUS.PAGE
+        ? 'Everything is confined to this page. Safe to apply as a draft for review.'
+        : 'Do not apply anything until the items above are confirmed by a person. ' +
+          'Applying a single-page edit is fine; the flagged items are not single-page.',
+    );
+    out(lines.join('\n'));
+  }
+
+  process.exitCode = exitCodeFor(verdict);
+}
+
+/** Pages that reference an entry through a relation field. */
+async function pagesReferencing(entryId) {
+  const query = `query ($id: [QueryArgument]) {
+    entries(relatedTo: $id, status: null, limit: 100) { id title uri sectionHandle }
+  }`;
+  assertReadOnly(query);
+  const data = await graphql(query, { id: [String(entryId)] }).catch(() => null);
+  return data?.entries ?? [];
+}
+
+/** Other pages in the corpus carrying an identical copy value. */
+function pagesWithSameValue(corpus, value, excludePageId, profile) {
+  if (typeof value !== 'string' || value.replace(/\s+/g, ' ').trim().length < 40) return [];
+  const needle = value.replace(/\s+/g, ' ').trim();
+  const hits = new Set();
+  for (const { page, blocks } of corpus) {
+    if (String(page.id) === String(excludePageId)) continue;
+    for (const block of blocks) {
+      for (const { value: v } of copyValues(block, profile)) {
+        if (v.replace(/\s+/g, ' ').trim() === needle) hits.add(page.uri ?? page.title);
+      }
+    }
+  }
+  return [...hits];
+}
+
 // --------------------------------------------------------------- schema
 
 async function cmdQuery(positional, flags) {
@@ -488,6 +1183,18 @@ async function main() {
       return cmdBlocks(flags);
     case 'export':
       return cmdExport(flags);
+    case 'grammar':
+      return cmdGrammar(flags);
+    case 'design-system':
+      return cmdDesignSystem(flags);
+    case 'audit':
+      return cmdAudit(flags);
+    case 'brief':
+      return cmdBrief(positional[0], flags);
+    case 'diff':
+      return cmdDiff(positional[0], positional[1], flags);
+    case 'scope':
+      return cmdScope(positional[0], positional[1], flags);
     case 'drafts':
       return cmdDrafts(positional[0], flags);
     case 'query':
