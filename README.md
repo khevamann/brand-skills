@@ -69,9 +69,7 @@ Nothing beyond a single page is applied without a person deciding the scope.
 
 Update later with `/plugin marketplace update castle-keys`.
 
-**Upgrading from `craft-cms`:** the plugin is now called `website`. Uninstall
-`craft-cms@castle-keys` and install `website@castle-keys`. Nothing is hard-coded any
-more: the first conversation in a site's folder sets it up.
+There is nothing to configure: the first conversation in a site's folder sets it up.
 
 Requires Node 18+. No npm dependencies. Works in Claude Desktop and Claude Code.
 claude.ai chat can't reach the website from its sandbox, so it isn't supported.

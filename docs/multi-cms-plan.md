@@ -451,7 +451,7 @@ not "my Shopify". Per-platform skills would have near-identical trigger descript
 compete with each other.
 
 ```
-plugins/website/                         (renamed from craft-cms)
+plugins/website/
   skills/website/
     SKILL.md                 router: detect → load platform guide → three flows (<500 lines)
     references/
@@ -525,6 +525,3 @@ plugins/castle-keys-wordpress/           optional Tier 2
 - Which real sites can we test against: one of each platform, and ideally a Squarespace
   site on a plan with page drafts?
 - Should Tier 2 exist at all for the first release, or wait until Tier 1 apply is proven?
-- The plugin was renamed from `craft-cms` to `website`, which changes the install command
-  for existing users (the README says how to switch). Say if a thin `craft-cms` alias
-  plugin is wanted.
