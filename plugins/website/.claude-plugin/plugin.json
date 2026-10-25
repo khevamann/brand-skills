@@ -1,0 +1,21 @@
+{
+  "name": "website",
+  "description": "Work on a website built with Craft CMS, WordPress, Shopify, Squarespace or anything else: detect the platform, keep a project folder that remembers between sessions, export and audit content, brief Claude Design, and check how far a change reaches. Read-only: it never changes the site.",
+  "version": "0.2.0",
+  "author": {
+    "name": "khevamann"
+  },
+  "repository": "https://github.com/khevamann/castle-keys",
+  "keywords": [
+    "website",
+    "cms",
+    "craft",
+    "craftcms",
+    "wordpress",
+    "shopify",
+    "squarespace",
+    "content",
+    "audit",
+    "read-only"
+  ]
+}

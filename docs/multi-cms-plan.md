@@ -455,26 +455,28 @@ plugins/website/                         (renamed from craft-cms)
   skills/website/
     SKILL.md                 router: detect → load platform guide → three flows (<500 lines)
     references/
-      flows.md, scope.md, design-handoff.md, learning-an-admin.md
-      platforms/craft.md, craft-apply.md, wordpress.md, wordpress-apply.md,
-                shopify.md, shopify-apply.md, squarespace.md, squarespace-apply.md,
-                generic.md
+      project-folder.md, design-handoff.md
+      platforms/craft.md, craft-apply.md, craft-graphql-api.md,
+                wordpress.md, shopify.md, squarespace.md, other.md
     scripts/
       site.mjs               one CLI: detect, overview, export, audit, design-system,
                              brief, diff, scope, …  (dispatches to the adapter)
-      core/                  crawl, audit, fields, designsystem, scope, manifest, workspace
-      adapters/craft/ wordpress/ shopify/ squarespace/ generic/
+      core/                  cli, detect, project, audit, fields, designsystem, scope
+      adapters/craft/        (wordpress/ shopify/ squarespace/ generic/ to come)
 plugins/castle-keys-shopify/             optional Tier 2: .mcp.json + guide
 plugins/castle-keys-wordpress/           optional Tier 2
 ```
 
 - Keep the description under 1,024 characters, with the trigger words first: website,
   page, CMS, the URL, and the platform names.
-- Keep `craft` as an alias of `site` for one release.
+- No `craft` alias was kept: the `site` CLI replaced it outright (see step 1).
 
 ## 9. Suggested order of work
 
-1. **Core refactor at Craft parity.**
+1. **Core refactor at Craft parity. Done 2026-10-25.** Verified live against the Kirby
+   site: detection found its headless Craft API at `/api`; export, audit, page, brief,
+   design-system and scope all ran from a project folder. The plain-text `page` view,
+   which had been crashing, was fixed on the way.
    - Extract the core.
    - Make Craft an adapter.
    - Add `detect` (with the multiple-choice question as its fallback) and the project
@@ -523,5 +525,6 @@ plugins/castle-keys-wordpress/           optional Tier 2
 - Which real sites can we test against: one of each platform, and ideally a Squarespace
   site on a plan with page drafts?
 - Should Tier 2 exist at all for the first release, or wait until Tier 1 apply is proven?
-- Renaming the plugin from `craft-cms` changes the install command for existing users.
-  Is that OK, or should `craft-cms` remain as a thin alias plugin?
+- The plugin was renamed from `craft-cms` to `website`, which changes the install command
+  for existing users (the README says how to switch). Say if a thin `craft-cms` alias
+  plugin is wanted.
