@@ -1,8 +1,10 @@
 # WordPress
 
-> **No WordPress scripts yet.** Detection and the project folder work; everything else
-> is done in the app browser using this guide. Researched 2026-10-25, not yet tried on
-> a real site: treat each step as a hypothesis, and record what actually happens in the
+> **Reading is scripted; applying is not.** `site export`, `audit`, `page`, `blocks`,
+> `design-system`, `brief`, `diff` and `scope` read the public WordPress site from the
+> outside. Drafts and anything behind a login are done in the app browser using this
+> guide. The admin steps were researched 2026-10-25 and are unverified on a real
+> site: treat each one as a hypothesis, and record what actually happens in the
 > project's `admin-guide.md` and `learnings.md`.
 
 ## First, find out which editor the site uses
@@ -22,6 +24,11 @@ Record it in `SITE.md` ("WordPress, Elementor"). Block themes (the Site Editor) 
 matter: look for `wp-site-blocks` in the source.
 
 ## Reading (no login needed)
+
+The scripts do this. They split pages by Gutenberg block (`wp-block-*`), by Elementor
+container (old `container`/`section` and Elementor 4's `e-div-block`/`e-flexbox`), and
+make one block per post on blog listings. Header, footer and anything repeated on most
+pages count as site layout. What they rely on, for when something looks wrong:
 
 - Page and post list: `<site>/wp-json/wp/v2/pages?per_page=100` and `/posts`. Public
   for published content; returns rendered HTML only, not the block structure. Security

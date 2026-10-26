@@ -8,10 +8,12 @@ detect` probes the usual endpoints (`/api`, `/actions/graphql/api`,
 headless Craft often serves the front end and the CMS from different hosts. The endpoint
 found is stored in the project's `site.json` as `craft.graphql`.
 
-**If no public schema answers**, the scripts cannot read the site. Work as on any other
-platform (`references/platforms/other.md`): read pages in the app browser, and apply
-through the control panel per `craft-apply.md`. Recognise Craft's control panel by its
-**Entries** menu and `/admin` address.
+**If no public schema answers**, the scripts read the site from the outside instead, as
+on any other platform (`references/platforms/other.md`). Headless Craft front ends often
+render each block as `<section id="<entry id>">`, so the outside view can still carry
+Craft's real block ids. Drafts are not visible that way. Apply through the control panel
+per `craft-apply.md`. Recognise Craft's control panel by its **Entries** menu and
+`/admin` address.
 
 Every Craft site has its own content model — its own sections, entry types, block types
 and field handles. Never assume names from the example below; read them with

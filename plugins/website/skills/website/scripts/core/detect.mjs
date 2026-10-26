@@ -8,6 +8,7 @@
 // Signals are our own, not copied from Wappalyzer's GPL rule set.
 
 import { SiteError } from './cli.mjs';
+import { decodeEntities, cleanText } from './html.mjs';
 
 const UA = 'Mozilla/5.0 (compatible; website-skill/0.2; +https://github.com/khevamann/castle-keys)';
 
@@ -222,6 +223,6 @@ export async function detect(input) {
     status: home.status,
     ...result,
     craftGraphql: craftGraphql ?? null,
-    title: home.html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1]?.trim() ?? null,
+    title: cleanText(decodeEntities(home.html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1] ?? '')) || null,
   };
 }

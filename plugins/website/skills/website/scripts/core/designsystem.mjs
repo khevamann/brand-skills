@@ -34,17 +34,59 @@ export function extractTokens(html) {
 }
 
 /**
- * Collapse the selectors worth reporting and drop the rest. Per-theme overrides
- * are keyed by numeric Craft ids and there are hundreds of them; the four modes
- * and the root scale are what a design brief needs.
+ * Collapse the selectors worth reporting and drop the rest. The root scale, display
+ * modes and colour themes are what a design brief needs; per-component overrides
+ * (hundreds of them on some sites) are not. A selector list maps to its first
+ * recognised member.
  */
 function normaliseSelector(selector) {
-  if (/^:host,:root$|^:root$/.test(selector)) return ':root';
-  const mode = selector.match(/^\[data-mode=["']?([a-z-]+)["']?\]$/);
-  if (mode) return `mode:${mode[1]}`;
-  if (selector === 'body') return 'body';
-  if (selector === '.prose') return '.prose';
+  for (const raw of selector.split(',')) {
+    const part = raw.trim();
+    if (part === ':root' || part === ':host' || part === 'html') return ':root';
+    if (part === 'body') return 'body';
+    if (part === '.prose') return '.prose';
+    const mode = part.match(/^\[data-mode=["']?([a-z-]+)["']?\]$/);
+    if (mode) return `mode:${mode[1]}`;
+    // Squarespace section colour themes.
+    const sqs = part.match(/^\[data-section-theme=["']?([a-z-]+)["']?\]$/);
+    if (sqs) return `theme:${sqs[1]}`;
+    // Shopify colour schemes (Dawn: .color-scheme-1; Horizon: .color-scheme-<id>).
+    const scheme = part.match(/^\.color-(scheme-[\w-]+|background-\d+)$/);
+    if (scheme) return `scheme:${scheme[1]}`;
+    // Elementor's global kit.
+    if (/^\.elementor-kit-\d+$/.test(part)) return 'elementor-kit';
+  }
   return null;
+}
+
+/** Tokens from a stylesheet rather than a page. */
+export function extractTokensFromCss(css) {
+  return extractTokens(`<style>${css}</style>`);
+}
+
+/**
+ * What a site without tokens actually uses: the most frequent colours, font
+ * families and font sizes in its CSS. Literal values, so a brief can say "the
+ * site's blue is #1a4d8f" even when nothing names it.
+ */
+export function styleStats(css) {
+  const count = (re, normalise = (v) => v) => {
+    const counts = new Map();
+    for (const m of css.matchAll(re)) {
+      const v = normalise(m[1].trim());
+      if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
+    }
+    return [...counts].sort((a, b) => b[1] - a[1]);
+  };
+  const hex = (v) => {
+    const h = v.toLowerCase();
+    return h.length === 4 ? `#${h[1]}${h[1]}${h[2]}${h[2]}${h[3]}${h[3]}` : h;
+  };
+  return {
+    colours: count(/(#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b|rgba?\([^)]*\)|hsla?\([^)]*\))/g, (v) => (v.startsWith('#') ? hex(v) : v.replace(/\s+/g, ''))),
+    fonts: count(/font-family\s*:\s*([^;}{]+)/g, (v) => (v.startsWith('var(') || v === 'inherit' ? null : v.replace(/\s*!important/, ''))),
+    sizes: count(/font-size\s*:\s*([^;}{]+)/g, (v) => (v.startsWith('var(') || v === 'inherit' ? null : v.replace(/\s*!important/, ''))),
+  };
 }
 
 /** Utility classes present in the markup, with how often each is used. */

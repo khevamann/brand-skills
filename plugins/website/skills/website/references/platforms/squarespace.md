@@ -1,8 +1,10 @@
 # Squarespace
 
-> **No Squarespace scripts yet.** Detection and the project folder work; everything else
-> is done in the app browser using this guide. Researched 2026-10-25, not yet tried on a
-> real site: treat each step as a hypothesis, and record what actually happens in the
+> **Reading is scripted; applying is not.** `site export`, `audit`, `page`, `blocks`,
+> `design-system`, `brief`, `diff` and `scope` read the public Squarespace site from the
+> outside. Drafts and anything behind a login are done in the app browser using this
+> guide. The admin steps were researched 2026-10-25 and are unverified on a real
+> site: treat each one as a hypothesis, and record what actually happens in the
 > project's `admin-guide.md` and `learnings.md`.
 
 **Squarespace has no version history.** Once a change is saved, the old version is gone.
@@ -19,6 +21,11 @@ Always snapshot a page before touching it.
   who can edit content on existing pages but not styles.
 
 ## Reading (no login needed)
+
+The scripts do this: each page section is a block, its ref the section id, with the
+Squarespace block types inside it listed as parts. `site design-system` reads
+`site.css`, including the ten section themes. What they rely on, for when something
+looks wrong:
 
 - Page list: `<site>/sitemap.xml`.
 - Any page or collection with `?format=json-pretty` added returns its data. Blog and

@@ -54,6 +54,7 @@ export function relationValues(block) {
   const out = [];
   for (const [field, value] of Object.entries(block)) {
     if (!Array.isArray(value) || value.length === 0) continue;
+    if (field.startsWith('_')) continue; // adapter metadata, not content
     if (value.some((v) => v && v.__typename)) continue; // nested blocks, not relations
     if (PLUMBING_RELATIONS.test(field)) continue;
     out.push({ field, items: value });

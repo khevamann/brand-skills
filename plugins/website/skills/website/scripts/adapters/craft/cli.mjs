@@ -1007,7 +1007,10 @@ async function cmdScope(id, file, flags) {
   const { entry, contentFields } = await fetchPageTree(core, Number(flags.depth ?? 3));
   const owned = new Map((entry ? flattenBlocks(entry, contentFields) : []).map((b) => [String(b.id), b]));
 
-  const items = [...manifestConcerns(manifest)];
+  const knownTypes = (manifest.newBlocks ?? []).length
+    ? [...(await buildGrammar([core.__typename])).values()].flat()
+    : [];
+  const items = [...manifestConcerns(manifest, { knownTypes })];
   const corpus = flags.from ? (await loadCorpus(flags)).corpus : null;
   const profile = corpus ? profileFromCorpus(corpus) : null;
   if (!profile) {

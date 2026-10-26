@@ -18,8 +18,14 @@ import {
   CLAUDE_MD_START,
 } from './core/project.mjs';
 import * as craft from './adapters/craft/cli.mjs';
+import * as generic from './adapters/generic/cli.mjs';
 
-const ADAPTERS = { craft };
+const ADAPTERS = { craft, generic };
+
+/** Which adapter serves a project: Craft's API when it has one, else the outside view. */
+function adapterName(site) {
+  return site.platform === 'craft' && site.craft?.graphql ? 'craft' : 'generic';
+}
 
 const USAGE = `site — read-only tools for a website project
 
@@ -35,8 +41,9 @@ PROJECT
   site note "<text>"                 Add a dated note to SITE.md for future sessions
 
 PLATFORM COMMANDS
-  Depend on the project's platform. \`site help <platform>\` lists them.
-  Craft CMS: overview, export, audit, page, blocks, design-system, brief, diff, scope, …
+  Depend on the site. \`site help craft\` lists the Craft API ones; \`site help generic\`
+  the ones for every other site: overview, pages, page, export, audit, blocks,
+  design-system, brief, diff, scope.
 
 Nothing here changes the website. There is no command that creates, edits,
 publishes or deletes anything on the site.
@@ -45,28 +52,26 @@ publishes or deletes anything on the site.
 /** What the scripts can do today on each platform, said plainly. */
 function platformStatus(site) {
   const guide = `references/platforms/${site.platform}.md`;
-  if (site.platform === 'craft') {
-    return site.craft?.graphql
-      ? {
-          scripted: true,
-          summary:
-            'Full support: export, audit, design system, briefs, diff and the scope gate all run ' +
-            'as scripts. Applying a change happens in the Craft control panel, in the app browser, as a draft.',
-          guide,
-        }
-      : {
-          scripted: false,
-          summary:
-            "This Craft site does not expose a public GraphQL API, so the scripts cannot read it yet. " +
-            'Work through the browser instead, following the guide, and record what you learn.',
-          guide,
-        };
+  if (adapterName(site) === 'craft') {
+    return {
+      adapter: 'craft',
+      summary:
+        "Full support over Craft's API: export, audit, design system, briefs, diff and the scope gate. " +
+        'Applying a change happens in the Craft control panel, in the app browser, as a draft.',
+      guide,
+    };
   }
+  const why = site.platform === 'craft'
+    ? 'This Craft site has no public API, so the scripts read it from the outside, as a visitor sees it: '
+    : site.platform === 'other'
+      ? 'The scripts read the site from the outside, as a visitor sees it: '
+      : `The scripts read ${site.platformName} sites from the outside, as a visitor sees it: `;
   return {
-    scripted: false,
+    adapter: 'generic',
     summary:
-      `Dedicated ${site.platformName} scripts are not built yet. Detection and this project folder ` +
-      'work; read, audit and apply through the app browser following the guide, and record what ' +
+      why +
+      'export, audit, design system, briefs, diff and the scope gate all work on public pages. ' +
+      'Drafts and anything behind a login need the app browser, following the guide; record what ' +
       'works in admin-guide.md and learnings.md.',
     guide,
   };
@@ -260,21 +265,17 @@ async function main() {
 
   // Everything else belongs to a platform adapter.
   const project = loadProject('.');
-  const platform = typeof flags.endpoint === 'string' ? 'craft' : project?.site.platform;
-  const adapter = ADAPTERS[platform];
+  const name = typeof flags.endpoint === 'string' ? 'craft' : project ? adapterName(project.site) : null;
+  const adapter = ADAPTERS[name];
 
   if (!adapter?.COMMANDS.includes(command)) {
     const known = Object.values(ADAPTERS).some((a) => a.COMMANDS.includes(command));
     if (!known) throw new GuardError(`Unknown command \`${command}\`.\n\n${USAGE}`);
     if (!project) throw new SiteError(`No project in this folder. Run \`site start <url>\` first.`);
-    const status = platformStatus(project.site);
     throw new SiteError(
-      `\`${command}\` is not available for ${project.site.platformName} yet.\n${status.summary}\nGuide: ${status.guide}`,
+      `\`${command}\` is not available for this site.\n${platformStatus(project.site).summary}\n` +
+        `\`site help ${name}\` lists what is.`,
     );
-  }
-
-  if (project && !platformStatus(project.site).scripted && typeof flags.endpoint !== 'string') {
-    throw new SiteError(platformStatus(project.site).summary);
   }
 
   return adapter.run(command, positional, flags, {

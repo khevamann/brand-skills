@@ -61,42 +61,51 @@ Say in your reply when you have updated the project notes, and what changed.
 
 `$SITE start` says this for the current project; the platform guide has the details.
 
-| Platform | Scripts | Guide |
+| Platform | How the scripts read it | Guide |
 |---|---|---|
-| Craft CMS (public GraphQL on) | Full: export, audit, design system, brief, diff, scope | `references/platforms/craft.md` |
-| WordPress | Detection and project folder; the rest in the browser | `references/platforms/wordpress.md` |
-| Shopify | Detection and project folder; the rest in the browser | `references/platforms/shopify.md` |
-| Squarespace | Detection and project folder; the rest in the browser | `references/platforms/squarespace.md` |
-| Anything else | Detection and project folder; explore and learn the admin | `references/platforms/other.md` |
+| Craft CMS, public API on | Craft's API: exact block ids and fields, drafts included | `references/platforms/craft.md` |
+| WordPress | From the outside: public pages, with Gutenberg and Elementor structure | `references/platforms/wordpress.md` |
+| Shopify | From the outside: public pages, split by theme section | `references/platforms/shopify.md` |
+| Squarespace | From the outside: public pages, split by section and block | `references/platforms/squarespace.md` |
+| Anything else, or Craft without an API | From the outside: public pages, split by main content | `references/platforms/other.md` |
 
-Where there are no scripts yet, do the same flows by hand: read pages in the app
-browser, write findings into the project folder (`audits/`, `design/`), and record
-what you learn in `admin-guide.md` so the next session is faster.
+Every flow below works on every platform. "From the outside" means the scripts see what
+a visitor sees: no drafts, nothing behind a login, and they cannot be sure what the CMS
+shares between pages, so anything repeated across pages is treated as shared. Applying
+a change always happens in the browser.
 
 ## 4. The three flows
 
 When asked "what can I do with this?", answer with these and say which one the request
-belongs to. Commands below are the Craft ones; on other platforms follow the guide.
+belongs to. The commands are the same on every platform; `$SITE help` lists the extras.
 
 **1. Read and audit** — no login needed.
 
 ```bash
 $SITE export                     # whole site into export/ (a few minutes)
 $SITE audit --links              # placeholders, empty blocks, broken links → audits/
-$SITE page <id>                  # one page's copy, with block ids
-$SITE entries --search "..." --status all
+$SITE page <page>                # one page's copy, block by block, with refs
+$SITE pages                      # every page the sitemap lists (outside view)
+$SITE entries --search "..." --status all     # Craft API: find an entry
 ```
+
+A page is named by URL, by path (`/about`) or by its id in the export (`about`); on
+Craft's API, by entry id.
+
+If an export says the site's `robots.txt` blocks automated reading (common on staging
+sites), stop and ask the user. Only if they confirm it is their own site, re-run with
+`--ignore-robots`, and note their answer in `SITE.md`.
 
 **2. Prepare a design change** — the round trip through Claude Design.
 
 ```bash
-$SITE design-system              # tokens, classes, grammar, style guide → design/system/
-$SITE blocks                     # the block vocabulary and its copy fields
-$SITE brief <id>                 # → design/brief-<id>.md
+$SITE design-system              # tokens, colours, fonts, classes → design/system/
+$SITE blocks                     # the block types this site uses
+$SITE brief <page>               # → design/brief-<id>.md
 # hand the brief + design/system/DESIGN-SYSTEM.md + style-guide.html to Claude Design;
 # it returns edited HTML plus an edit manifest (format in the brief)
-$SITE diff <id> result.json      # are the edits valid?
-$SITE scope <id> result.json     # do they stay on one page?
+$SITE diff <page> result.json    # are the edits valid? (or result.html, read back via its tags)
+$SITE scope <page> result.json   # do they stay on one page?
 ```
 
 **3. Apply the change** — in the site's admin, in the **Claude Desktop app browser**,
@@ -115,9 +124,10 @@ Be straight about limits when asked. They are structural, not missing features:
 
 ## 5. The scope rule — the one thing not to get wrong
 
-**Never call a change ready to apply until it is confirmed to stay on one page.** On
-Craft, `$SITE scope` must exit 0; it exits 3 and explains itself otherwise. On other
-platforms, check the guide's "always ask first" list by hand.
+**Never call a change ready to apply until it is confirmed to stay on one page.**
+`$SITE scope` must exit 0; it exits 3 and explains itself otherwise. Run it against a
+fresh export, because it compares the page with every other page. Also check the
+platform guide's "always ask first" list: some sharing is invisible from outside.
 
 Things that look local and are not:
 
@@ -132,41 +142,50 @@ pages, or neither. Name the pages and how many. Do not choose for them, and do n
 quietly apply the safe subset as though the whole change were approved. Record their
 answer as a note if it is a standing rule.
 
-## Craft commands
+## Commands
+
+Project, on every site: `$SITE start [url]`, `$SITE detect <url>`, `$SITE init <url>
+--platform <p>`, `$SITE note "<text>"`, `$SITE help [craft|generic]`.
+
+On every site:
 
 | | |
 |---|---|
 | `$SITE overview` | What is here, what you can do, what you cannot |
+| `$SITE export` | Whole site to disk. Outside view: `[--limit n] [--delay ms]`; Craft: `[--no-html]` |
+| `$SITE audit [--links]` | Placeholders, empty blocks, broken links, repeated copy → `audits/` |
+| `$SITE page <page> [--raw]` | A page's copy, block by block. Outside view: `--chrome`, `--live` |
+| `$SITE blocks` | The block types in use, and their copy fields |
+| `$SITE design-system [--url URL]` | Live tokens, colours, fonts, classes → `design/system/` |
+| `$SITE brief <page>` | A paste-ready design brief → `design/brief-<id>.md` |
+| `$SITE diff <page> <file.json\|.html>` | What an edited result would change |
+| `$SITE scope <page> <manifest.json>` | **Blast radius.** Exit 0 = one page, 3 = ask first |
+
+Outside view only: `$SITE pages [--limit n]` lists the site's pages.
+
+Craft's API only:
+
+| | |
+|---|---|
 | `$SITE sections` | Sections and entry types |
 | `$SITE entries [--section --type --search --limit --status]` | Find entries |
-| `$SITE page <id> [--raw] [--depth n]` | A page's copy, walking the nested blocks |
 | `$SITE entry <id>` | One entry's own fields |
 | `$SITE drafts <id>` / `--unpublished` | Existing drafts of an entry |
-| `$SITE blocks [--terse] [--json]` | Block vocabulary: usage, copy vs style fields |
 | `$SITE grammar` | Which block types are allowed inside which fields |
-| `$SITE design-system [--out DIR] [--url URL]` | Live tokens, classes, grammar, style guide |
-| `$SITE export [--out DIR] [--no-html]` | Whole site to disk |
-| `$SITE audit [--from DIR] [--links]` | Placeholders, empty blocks, broken links, repeated copy |
-| `$SITE brief <id> [--out FILE]` | A paste-ready design brief for one page |
-| `$SITE diff <id> <file.json\|.html>` | What an edited artefact would change |
-| `$SITE scope <id> <manifest.json>` | **Blast radius.** Exit 0 = one page, 3 = ask first |
 | `$SITE query <file\|->` / `--q "..."` | Any read query |
 | `$SITE schema [TypeName]` | Query root fields, or one type's fields |
 | `$SITE mutations` | Audit: what the schema could write, and why none is reachable |
 
 Inside a project folder, `audit`, `brief`, `scope` and `overview` read `export/` by
-default, and output goes into the folder. `--links` needs the HTML, so export without
-`--no-html`.
-
-Project commands: `$SITE start [url]`, `$SITE detect <url>`, `$SITE init <url>
---platform <p>`, `$SITE note "<text>"`, `$SITE help [craft]`.
+default, and everything is written into the folder.
 
 ## Rules
 
 - **Never fabricate an id, handle, or field name.** Read them from the site.
 - **An empty search is not proof a page is absent.** List and filter first.
 - **Quote exactly.** Give values verbatim; do not tidy silently.
-- **Name the field.** "The heading" is ambiguous; `#5665 richText_Text` is not.
+- **Name the field.** "The heading" is ambiguous; `#5665 richText_Text` or
+  `template--10__hero text_Heading1` is not.
 - **Report a change as block → field → old value → new value.**
 - **If a command exits `BLOCKED`,** the request is a write. Say so; do not find a way
   around it.

@@ -24,8 +24,10 @@ const GLOBAL_INTENT = /\b(all pages|every page|site[- ]?wide|globally|global sty
  * Manifest-level checks, before any individual edit is considered. These catch a
  * design tool asking for something that is not a page edit at all.
  */
-export function manifestConcerns(manifest) {
+export function manifestConcerns(manifest, { knownTypes = null } = {}) {
   const concerns = [];
+  const bare = (t) => String(t).replace(/_Entry$/, '');
+  const known = knownTypes ? new Set([...knownTypes].map(bare)) : null;
 
   for (const key of GLOBAL_MANIFEST_KEYS) {
     if (manifest[key] !== undefined) {
@@ -50,7 +52,14 @@ export function manifestConcerns(manifest) {
   }
 
   for (const nb of manifest.newBlocks ?? []) {
-    if (nb.type && !/^ds_/.test(nb.type)) {
+    if (!nb.type) continue;
+    if (!known) {
+      concerns.push({
+        radius: RADIUS.NEEDS_CONFIRMATION,
+        what: `new block \`${nb.type}\``,
+        why: "The site's block types could not be checked, so this may be a type that does not exist.",
+      });
+    } else if (!known.has(bare(nb.type))) {
       concerns.push({
         radius: RADIUS.NOT_POSSIBLE,
         what: `new block type \`${nb.type}\``,

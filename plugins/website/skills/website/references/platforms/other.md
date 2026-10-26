@@ -5,27 +5,32 @@ HubSpot, a custom build, or anything unrecognised. Detection names the platform 
 can. Record that name in `SITE.md`, and check the platform's own help pages for how
 drafts work before touching anything.
 
-> **No generic scripts yet.** Everything here is done in the app browser and recorded in
-> the project folder. A scripted generic reader is planned.
+Reading is scripted, from the outside; applying happens in the app browser.
 
 ## Reading from the outside (no login needed)
 
-1. **Find the pages.** Check `<site>/robots.txt` for `Sitemap:` lines, then try
-   `<site>/sitemap.xml`. With no sitemap, follow links from the homepage. Read politely:
-   one page at a time, and ask before going past about 200 pages.
-2. **Take the main content** of each page: the `<main>` element if there is one. Save
-   pages to `export/` as you go, with a short `export/index.md` listing them.
-3. **Audit** the same things as on Craft: placeholder copy (lorem ipsum, "your text
-   here", template sample names), empty sections, broken links. Save the report to
-   `audits/<date>.md`.
-4. **Find what is shared.** A block of content that appears on most pages is site-wide
-   (header, footer, navigation). One that appears on a few pages is shared between
-   those pages: list them. From the outside you can't tell a single shared component
-   from text pasted into each page, so treat any repeat as shared and ask.
-5. **Design system.** Collect the CSS custom properties (`--…`) from the page source and
-   stylesheets, plus the colours, fonts and sizes used most. Write
-   `design/DESIGN-SYSTEM.md` and save a representative page as
-   `design/style-guide.html`. Then follow `references/design-handoff.md`.
+The scripts do all of this:
+
+1. **Find the pages.** `site pages` reads `robots.txt` and the sitemap, or follows links
+   from the homepage when there is none. Reading is polite: one page at a time with a
+   pause, and capped at 200 pages unless `--limit` says otherwise.
+2. **Split each page into blocks.** `site export` takes the main content (the `<main>`
+   element, or failing that the body) down to its real sections, and gives each copy
+   field a name: `text_Heading1`, `text_Paragraph2`, `text_Button1`.
+3. **Audit.** `site audit` reports placeholder copy, empty blocks, pages that fail to
+   load, images without alt text, broken links and repeated copy.
+4. **Find what is shared.** Blocks repeated on most pages are treated as site layout
+   (navigation, footer); anything repeated on a few pages is named. From the outside you
+   can't tell a single shared component from text pasted into each page, so
+   `site scope` treats any repeat as shared and asks.
+5. **Design system.** `site design-system` collects CSS custom properties from the page
+   and its stylesheets, plus the colours, fonts and sizes used most.
+
+If a page comes out badly split (for example, a site drawn entirely by JavaScript has
+little in its HTML), read it in the app browser instead and note that in `SITE.md`.
+
+If `robots.txt` blocks automated reading, the scripts stop and say so. Ask the user;
+only with their confirmation that the site is theirs, re-run with `--ignore-robots`.
 
 ## Learning the admin
 

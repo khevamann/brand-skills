@@ -4,10 +4,16 @@ The round trip is: read the page → brief a design tool → get edited output �
 the CMS. Two things make or break it, and both are about the handoff format rather than
 the design work.
 
-This applies on every platform. The commands are the Craft ones, where they are
-scripted; elsewhere, produce the same files by hand into the project's `design/` folder
-and check scope against the platform guide's "always ask first" list. The worked
-examples come from a Digistorm-built Craft school site.
+This applies on every platform, with the same commands. Block refs and field names
+differ: on Craft's API a block is an entry id and a field a Craft handle
+(`5665` / `richText_Text`); read from the outside, a block is a section id or a
+generated ref and a field is named for what it is (`template--10__hero` /
+`text_Heading1`). The brief says which, and the manifest uses whatever the brief gave.
+The worked examples come from a Digistorm-built Craft school site.
+
+From the outside, ask Claude Design to keep `data-ck-ref` and `data-ck-field` on every
+element it edits. Then `site diff <page> result.html` reads the edits straight back
+into a manifest.
 
 Claude Design cannot import a design system from a URL, so it gets files: the brief,
 `DESIGN-SYSTEM.md`, and a rendered `style-guide.html`. Ask for standalone HTML back,

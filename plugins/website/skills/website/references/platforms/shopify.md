@@ -1,8 +1,10 @@
 # Shopify
 
-> **No Shopify scripts yet.** Detection and the project folder work; everything else is
-> done in the app browser using this guide. Researched 2026-10-25, not yet tried on a
-> real store: treat each step as a hypothesis, and record what actually happens in the
+> **Reading is scripted; applying is not.** `site export`, `audit`, `page`, `blocks`,
+> `design-system`, `brief`, `diff` and `scope` read the public Shopify store from the
+> outside. Drafts and anything behind a login are done in the app browser using this
+> guide. The admin steps were researched 2026-10-25 and are unverified on a real
+> store: treat each one as a hypothesis, and record what actually happens in the
 > project's `admin-guide.md` and `learnings.md`.
 
 **Shopify's big trap: a change that looks like it is for one page usually changes many.**
@@ -20,6 +22,11 @@ Read "What is shared" before proposing anything.
 - **Never touch prices, variants, inventory, orders, markets or translations.**
 
 ## Reading (no login needed)
+
+The scripts do this. Each theme section becomes a block whose ref is its section id
+(`template--<n>__<key>`), so a scope check can tell a page's own content from template
+and section-group settings, and name the other exported pages built from the same
+template. What they rely on, for when something looks wrong:
 
 - Page list: `<store>/sitemap.xml`, which links to product, collection, page and blog
   sitemaps.

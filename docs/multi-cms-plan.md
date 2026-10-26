@@ -484,9 +484,20 @@ plugins/castle-keys-wordpress/           optional Tier 2
      "resume" step at the start of every session.
    - Remove the Kirby hard-coding.
    - The existing tests must still pass. Port the read-only guard tests first.
-2. **Generic adapter.** It is the fallback for every other platform, and for Craft sites
-   without a public schema. It also gives the cross-page blast-radius detector that all
-   adapters use as a backstop.
+2. **Generic adapter. Done 2026-10-26.** It now serves WordPress, Shopify, Squarespace,
+   anything else, and Craft sites without a public schema. It includes the platform
+   hints from steps 3–5's read paths: Shopify section ids, Squarespace section and
+   block attributes, Gutenberg blocks, Elementor containers (including Elementor 4's).
+   It also adds:
+   - cross-page sharing detection and layout detection;
+   - Shopify's template and section-group scope rules;
+   - Squarespace summary and code-block rules;
+   - WordPress synced-pattern, template-part and global-widget rules.
+
+   Verified live on a WordPress block-editor blog, an Elementor site, a Shopify store, a
+   Squarespace site, a Webflow site, and the Kirby Craft front end without its API.
+   What steps 3–5 still add is mainly reading through each platform's own data (WP REST
+   with a login, Shopify Storefront API, Squarespace `?format=json`) and the apply paths.
 3. **WordPress**, Gutenberg plus Elementor: the biggest demand, and already reported to
    half-work.
 4. **Squarespace.** A small adapter with a clean read; the work is the draft-or-duplicate

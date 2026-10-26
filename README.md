@@ -30,14 +30,20 @@ browser. Claude never asks for or stores passwords.
 
 ## What works on each platform
 
-| Platform | Today |
-|---|---|
-| Craft CMS (public GraphQL on) | Full scripts: export, audit, design system, design brief, diff, scope gate |
-| WordPress, Shopify, Squarespace | Detection and project folder; reading, auditing and applying in the browser with a per-platform guide |
-| Anything else | Detection and project folder; Claude reads the site from outside and learns the admin, writing down what it finds |
+Every platform gets the same flows: export, audit, design system, design brief, diff
+and the scope gate. What differs is how the site is read.
 
-The plan for dedicated WordPress, Shopify and Squarespace support is in
-[`docs/multi-cms-plan.md`](docs/multi-cms-plan.md).
+| Platform | Read through |
+|---|---|
+| Craft CMS, public GraphQL on | Craft's API: exact block ids and fields, drafts included |
+| WordPress | Public pages, split by Gutenberg block or Elementor container |
+| Shopify | Public pages, split by theme section; template and section-group sharing understood |
+| Squarespace | Public pages, split by section and block; site styles and section themes from `site.css` |
+| Anything else | Public pages, split by main content; layout repeated across pages detected |
+
+Applying a change happens in the site's admin in the app browser, with a guide per
+platform. Claude learns each site's admin and writes down what it finds. The plan for
+deeper per-platform support is in [`docs/multi-cms-plan.md`](docs/multi-cms-plan.md).
 
 ## The three flows
 

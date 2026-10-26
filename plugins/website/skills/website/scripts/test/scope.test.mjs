@@ -58,18 +58,26 @@ test('design-system changes are refused as impossible, not merely flagged', () =
 });
 
 test('an invented block type is refused', () => {
-  const concerns = manifestConcerns({
-    newBlocks: [{ afterBlockId: '1', type: 'HeroBanner', field: 'html', value: '<div/>' }],
-  });
+  const concerns = manifestConcerns(
+    { newBlocks: [{ afterBlockId: '1', type: 'HeroBanner', field: 'html', value: '<div/>' }] },
+    { knownTypes: ['ds_EmbedBlock_Entry', 'ds_RichTextBlock_Entry'] },
+  );
   assert.equal(concerns.length, 1);
   assert.equal(concerns[0].radius, RADIUS.NOT_POSSIBLE);
 });
 
 test('an existing block type in newBlocks is allowed through', () => {
-  const concerns = manifestConcerns({
-    newBlocks: [{ afterBlockId: '1', type: 'ds_EmbedBlock', field: 'embed_Code', value: '<div/>' }],
-  });
+  const concerns = manifestConcerns(
+    { newBlocks: [{ afterBlockId: '1', type: 'ds_EmbedBlock', field: 'embed_Code', value: '<div/>' }] },
+    { knownTypes: ['ds_EmbedBlock_Entry', 'ds_RichTextBlock_Entry'] },
+  );
   assert.deepEqual(concerns, []);
+});
+
+test('a new block whose type cannot be checked asks first', () => {
+  const concerns = manifestConcerns({ newBlocks: [{ afterBlockId: '1', type: 'anything' }] });
+  assert.equal(concerns.length, 1);
+  assert.equal(concerns[0].radius, RADIUS.NEEDS_CONFIRMATION);
 });
 
 test('notes describing a site-wide change demand confirmation', () => {

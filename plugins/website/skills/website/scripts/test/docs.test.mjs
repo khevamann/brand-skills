@@ -7,12 +7,14 @@ import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { COMMANDS as CRAFT_COMMANDS } from '../adapters/craft/cli.mjs';
+import { COMMANDS as GENERIC_COMMANDS } from '../adapters/generic/cli.mjs';
 
 const scripts = dirname(dirname(fileURLToPath(import.meta.url)));
 const skillDir = dirname(scripts);
 
 const site = readFileSync(join(scripts, 'site.mjs'), 'utf8');
 const craftCli = readFileSync(join(scripts, 'adapters', 'craft', 'cli.mjs'), 'utf8');
+const genericCli = readFileSync(join(scripts, 'adapters', 'generic', 'cli.mjs'), 'utf8');
 const skill = readFileSync(join(skillDir, 'SKILL.md'), 'utf8');
 
 /** Project command names from site.mjs's dispatch switch, excluding help aliases. */
@@ -22,16 +24,20 @@ function projectCommands() {
   return [...new Set(names)].filter((n) => n !== 'help');
 }
 
-test('every Craft command is dispatched by its adapter', () => {
-  const body = craftCli.slice(craftCli.indexOf('switch (command)'));
-  const dispatched = new Set([...body.matchAll(/case '([a-z][a-z-]*)':/g)].map((m) => m[1]));
-  for (const name of CRAFT_COMMANDS) assert.ok(dispatched.has(name), `\`${name}\` not dispatched`);
+test('every adapter command is dispatched by its adapter', () => {
+  for (const [cli, commands] of [[craftCli, CRAFT_COMMANDS], [genericCli, GENERIC_COMMANDS]]) {
+    const body = cli.slice(cli.indexOf('switch (command)'));
+    const dispatched = new Set([...body.matchAll(/case '([a-z][a-z-]*)':/g)].map((m) => m[1]));
+    for (const name of commands) assert.ok(dispatched.has(name), `\`${name}\` not dispatched`);
+  }
 });
 
 test('every command is listed in its usage text', () => {
-  const craftUsage = craftCli.slice(craftCli.indexOf('export const USAGE'), craftCli.indexOf('`;'));
-  for (const name of CRAFT_COMMANDS) {
-    assert.match(craftUsage, new RegExp(`site ${name}\\b`), `\`${name}\` missing from Craft help`);
+  for (const [cli, commands, label] of [[craftCli, CRAFT_COMMANDS, 'Craft'], [genericCli, GENERIC_COMMANDS, 'generic']]) {
+    const usage = cli.slice(cli.indexOf('export const USAGE'), cli.indexOf('`;', cli.indexOf('export const USAGE')));
+    for (const name of commands) {
+      assert.match(usage, new RegExp(`site ${name}\\b`), `\`${name}\` missing from ${label} help`);
+    }
   }
   const siteUsage = site.slice(site.indexOf('const USAGE'), site.indexOf('`;'));
   for (const name of projectCommands()) {
@@ -40,13 +46,13 @@ test('every command is listed in its usage text', () => {
 });
 
 test('every command is mentioned in SKILL.md', () => {
-  for (const name of [...CRAFT_COMMANDS, ...projectCommands()]) {
+  for (const name of [...CRAFT_COMMANDS, ...GENERIC_COMMANDS, ...projectCommands()]) {
     assert.match(skill, new RegExp(`\\$SITE ${name}\\b`), `\`${name}\` missing from SKILL.md`);
   }
 });
 
 test('SKILL.md documents no command the CLI does not have', () => {
-  const known = new Set([...CRAFT_COMMANDS, ...projectCommands(), 'help']);
+  const known = new Set([...CRAFT_COMMANDS, ...GENERIC_COMMANDS, ...projectCommands(), 'help']);
   const mentioned = [...skill.matchAll(/\$SITE ([a-z][a-z-]*)/g)].map((m) => m[1]);
   for (const name of new Set(mentioned)) {
     assert.ok(known.has(name), `SKILL.md references \`site ${name}\`, which does not exist`);
