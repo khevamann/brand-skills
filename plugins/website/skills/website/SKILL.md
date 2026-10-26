@@ -12,9 +12,11 @@ All scripted access goes through one command, run **from the project folder** (t
 folder attached to the user's Cowork project):
 
 ```bash
-SITE="node ${CLAUDE_SKILL_DIR}/scripts/site.mjs"
-$SITE start                                # first, every session
+node ${CLAUDE_SKILL_DIR}/scripts/site.mjs start      # first, every session
 ```
+
+Below, `$SITE` is shorthand for `node ${CLAUDE_SKILL_DIR}/scripts/site.mjs`. Write the
+full command out every time: shell variables do not carry over between commands.
 
 ## 1. Every session starts by resuming
 
