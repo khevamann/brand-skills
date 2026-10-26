@@ -20,6 +20,17 @@ $SITE start                                # first, every session
 **One folder = one website project.** It holds everything produced and everything
 learned, so a new session in the same folder carries on where the last one stopped.
 
+**The scripts need Node.js 18 or newer**, which Claude Desktop does not include. If
+`$SITE start` fails with "node: command not found" (or `node -v` shows a version below
+18), stop and help the user install it, in plain words:
+
+1. "These tools need a free program called Node.js. Open nodejs.org, download the
+   version marked LTS, and run the installer with the default options."
+2. "When it has finished, quit Claude completely and open it again, then come back to
+   this folder."
+
+Then carry on. Note in `SITE.md` that Node was installed, so nobody asks again.
+
 Run `$SITE start` before anything else, then **read `SITE.md` in full**. It is the
 overview and the project's memory: what the site is, what has been done, and dated
 notes from earlier sessions. Read `learnings.md` too before applying anything.

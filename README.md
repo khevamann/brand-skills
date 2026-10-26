@@ -91,7 +91,7 @@ Update later with `/plugin marketplace update castle-keys`.
 
 There is nothing to configure: the first conversation in a site's folder sets it up.
 
-Requires Node 18+. No npm dependencies. Works in Claude Desktop and Claude Code.
+Requires Node.js 18+ on the user's computer (Claude Desktop doesn't include it; the skill walks people through installing it from nodejs.org). No npm dependencies. Works in Claude Desktop and Claude Code.
 claude.ai chat can't reach the website from its sandbox, so it isn't supported.
 
 ## Read-only, three ways
