@@ -90,3 +90,23 @@ None. Squarespace has no API for pages or content: its developer APIs cover comm
 (products, orders, inventory) only, and its MCP server covers domains only. An
 unofficial tool drives Squarespace's private save API with session cookies; don't use
 it. It is unsupported and publishes live.
+
+## First-time checklist
+
+Questions only a real, logged-in site can answer. Nobody had one to test on, so the
+first project on Squarespace answers them. As you reach each one in real work, record what you
+saw with `site finding <ID> "<answer>"`, including how you know: the label you saw, the
+URL that opened, what happened after a click. Record anything else you learn about
+Squarespace in general with `site finding new "<text>"`. Never go looking for trouble to
+answer a question: answer it when the work takes you there, and stop at the first
+surprise.
+
+- **SQ-1** — Which plan is the site on, and does a page’s settings menu offer "Create draft"?
+- **SQ-2** — Page drafts: exact labels to create one, save it, and publish it ("Publish and replace"?), and what the preview link looks like.
+- **SQ-3** — Duplicate Page: where does the copy land, what is its URL, and is it hidden from visitors?
+- **SQ-4** — In the editor, can the browser tool click into a text block and type? Is the page preview inside an iframe?
+- **SQ-5** — Do the section ids the scripts report (`data-section-id`) appear anywhere in the editor?
+- **SQ-6** — Which colour theme names in the editor match the `theme:*` groups in the design system (white, light, dark…)?
+- **SQ-7** — After saving, is there any undo or history? What does Save / Exit look like?
+- **SQ-8** — Where does `<site>/config/pages` lead? Is there a direct link to one page’s editor?
+- **SQ-9** — Logging in: owner or contributor (which role), 2FA, and how long did the login last?

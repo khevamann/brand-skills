@@ -20,6 +20,8 @@ import {
 } from '../../core/audit.mjs';
 import { extractTokens, extractTokensFromCss, extractClasses, groupClasses, styleStats } from '../../core/designsystem.mjs';
 import { RADIUS, manifestConcerns, overallVerdict, exitCodeFor } from '../../core/scope.mjs';
+import { siteInfo, pageInfo } from '../../core/platforminfo.mjs';
+import { saveSite } from '../../core/project.mjs';
 import { buildSharedIndex, sharedWith, platformRule, isPresentationField, sameTemplatePages, markLayout } from './shared.mjs';
 
 let ctx = { project: null, site: null, paths: projectPaths('.') };
@@ -39,8 +41,6 @@ READ
       --live                         Fetch now, even if the page is in the export
   site export [--limit n]            Every page to disk: blocks, rendered HTML, what repeats
       --delay <ms>                   Pause between requests (default 400, or robots.txt's)
-      --ignore-robots                Read a site whose robots.txt says not to — only when the
-                                     user owns it and asked (staging sites often block everything)
   site blocks                        Block types seen across the export, and how often
   site design-system [--url URL]     Tokens, colours, fonts and classes → design/system/
   site audit [--links]               Placeholders, empty blocks, broken links, repeated copy
@@ -121,7 +121,25 @@ async function readLive(url) {
   const res = await getText(url);
   assertHtml(res);
   const seg = segmentPage(res.text, res.url, platform());
-  return { page: pageRecord(res.url, seg, res.status), blocks: seg.blocks, chrome: seg.chrome, html: res.text, source: 'live' };
+  const page = withPlatformInfo(pageRecord(res.url, seg, res.status), res.text);
+  return { page, blocks: seg.blocks, chrome: seg.chrome, html: res.text, source: 'live' };
+}
+
+/** The platform's own facts about a page (its CMS id, admin links), when it shows any. */
+function withPlatformInfo(page, html) {
+  const site = ctx.site?.platformInfo ?? siteInfo(html, platform());
+  const info = pageInfo(html, page.url, platform(), site);
+  return info ? { ...page, platform: info } : page;
+}
+
+/** Record site-wide platform facts (theme, version, store) in site.json for later sessions. */
+function rememberSiteInfo(html) {
+  const info = siteInfo(html, platform());
+  if (!info || !ctx.project) return info;
+  ctx.project.site.platformInfo = info;
+  ctx.site = ctx.project.site;
+  saveSite(ctx.project);
+  return info;
 }
 
 /** A page from the export when it is there (so it matches the shared index), else live. */
@@ -179,8 +197,8 @@ async function cmdOverview(flags) {
 
 async function cmdPages(flags) {
   const limit = Number(flags.limit ?? 500);
-  const found = await discoverPages(origin(), { limit, log, ignoreRobots: Boolean(flags['ignore-robots']) });
-  if (!found.pages.length) throw new SiteError(nothingFound(found));
+  const found = await discoverPages(origin(), { limit, log });
+  if (!found.pages.length) throw new SiteError(NOTHING_FOUND);
   out([
     `PAGES — ${found.total} found (${found.source === 'sitemap' ? 'from the sitemap' : 'by following links'})` +
       (found.total > found.pages.length ? `, showing ${found.pages.length}` : ''),
@@ -196,6 +214,7 @@ async function cmdPage(ref, flags) {
     `# ${entry.page.title || entry.page.url}`,
     entry.page.url,
     `page ${entry.page.id} · ${entry.blocks.length} blocks · from ${entry.source}`,
+    ...adminLinks(entry.page),
     '',
     '--- main content ---',
   ];
@@ -218,14 +237,26 @@ async function cmdPage(ref, flags) {
   out(lines.join('\n'));
 }
 
+/** Admin links for a page, marked when the link pattern has not been confirmed yet. */
+function adminLinks(page) {
+  const p = page.platform;
+  if (!p) return [];
+  const mark = (link) => `${link.url}${link.verified ? '' : '  (link pattern unconfirmed — see the platform checklist)'}`;
+  return [
+    p.type || p.id ? `in ${platformName()}: ${p.type ?? 'item'}${p.id ? ` ${p.id}` : ''}` : null,
+    p.editUrl ? `edit in the admin: ${mark(p.editUrl)}` : null,
+    p.themeEditorUrl ? `theme editor: ${mark(p.themeEditorUrl)}` : null,
+  ].filter(Boolean);
+}
+
 async function cmdExport(flags) {
   const dir = flags.out ?? ctx.paths.export;
   mkdirSync(join(dir, 'pages'), { recursive: true });
   const limit = Number(flags.limit ?? 200);
 
   log(`Finding pages on ${origin()}…`);
-  const found = await discoverPages(origin(), { limit, log, ignoreRobots: Boolean(flags['ignore-robots']) });
-  if (!found.pages.length) throw new SiteError(nothingFound(found));
+  const found = await discoverPages(origin(), { limit, log });
+  if (!found.pages.length) throw new SiteError(NOTHING_FOUND);
   const delayMs = Number(flags.delay ?? (found.robots.crawlDelay ? Math.min(found.robots.crawlDelay * 1000, 10000) : 400));
   log(`${found.total} pages found; exporting ${found.pages.length}, ${delayMs}ms apart.`);
 
@@ -242,7 +273,8 @@ async function cmdExport(flags) {
         return;
       }
       const seg = segmentPage(res.text, res.url, platform());
-      const page = pageRecord(res.url, seg, res.status);
+      if (i === 0) rememberSiteInfo(res.text);
+      const page = withPlatformInfo(pageRecord(res.url, seg, res.status), res.text);
       if (seen.has(page.id)) return; // two sitemap entries redirecting to one page
       seen.add(page.id);
       corpus.push({ page, blocks: seg.blocks, chrome: seg.chrome, htmlBytes: res.text.length });
@@ -294,17 +326,9 @@ async function cmdExport(flags) {
   });
 }
 
-/** Why discovery came back empty, said so the user can decide what to do. */
-function nothingFound(found) {
-  if (found.blockedByRobots || /^\/$/m.test(found.robots.disallow.join('\n'))) {
-    return (
-      "This site's robots.txt asks automated tools not to read it — common on staging and test " +
-      'sites. Nothing was read. If this is your own site and you want it audited anyway, re-run ' +
-      'with --ignore-robots. Ask the user first; do not add it on your own.'
-    );
-  }
-  return 'No pages found: no sitemap, and no links could be followed from the homepage. Try `site page <url>` for individual pages.';
-}
+const NOTHING_FOUND =
+  'No pages found: no sitemap, and no links could be followed from the homepage. ' +
+  'Try `site page <url>` for individual pages, or read the site in the app browser.';
 
 /** Blocks that appear on more than one page, most widespread first. */
 function sharedSummary(corpus) {

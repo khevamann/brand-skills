@@ -1,26 +1,16 @@
-// Finding pages politely: robots.txt rules, sitemaps, and page ids.
+// Finding pages politely: robots.txt hints, sitemaps, and page ids.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseRobots, allowedByRobots, parseSitemap, pageIdFor } from '../core/crawl.mjs';
+import { parseRobots, parseSitemap, pageIdFor } from '../core/crawl.mjs';
 
-test('robots.txt: only the * group applies, and the longest rule wins', () => {
+test('robots.txt: sitemaps and crawl delay are read from the * group', () => {
   const robots = parseRobots([
-    'User-agent: Googlebot', 'Disallow: /',
-    '', 'User-agent: *', 'Disallow: /cart', 'Disallow: /*?q=', 'Allow: /cart/share', 'Crawl-delay: 2',
+    'User-agent: Googlebot', 'Crawl-delay: 9',
+    '', 'User-agent: *', 'Disallow: /', 'Crawl-delay: 2',
     'Sitemap: https://example.com/sitemap_index.xml',
   ].join('\n'));
   assert.deepEqual(robots.sitemaps, ['https://example.com/sitemap_index.xml']);
   assert.equal(robots.crawlDelay, 2);
-  assert.equal(allowedByRobots(robots, '/about'), true);
-  assert.equal(allowedByRobots(robots, '/cart'), false);
-  assert.equal(allowedByRobots(robots, '/cart/share'), true);
-  assert.equal(allowedByRobots(robots, '/search?q=x'), false);
-});
-
-test('robots.txt: a staging site that blocks everything blocks everything', () => {
-  const robots = parseRobots('User-agent: *\nDisallow: /');
-  assert.equal(allowedByRobots(robots, '/'), false);
-  assert.equal(allowedByRobots(robots, '/about'), false);
 });
 
 test('sitemaps and sitemap indexes', () => {

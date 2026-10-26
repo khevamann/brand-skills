@@ -64,20 +64,10 @@ on any install)**. For page 177 in section `ds_Pages` that would be
 
 ## What to record on the first run
 
-Append to the project's `learnings.md`, and write the specifics into its
-`admin-guide.md`. If something applies to Craft in general, tell the user so the skill's
-maintainer can rewrite this file:
+Answer the questions in the "First-time checklist" in `craft.md` as you reach them,
+with `site finding CR-<n> "<answer>"`. Block-id visibility (CR-3) matters most: it
+decides whether block matching is reliable or positional.
 
-- The real URL pattern for editing an entry.
-- The exact control and label for creating a draft.
-- Whether block ids are visible anywhere in the UI. This is the single most valuable
-  thing to find out — it decides whether block matching is reliable or positional.
-- How rich-text fields handle pasted HTML: preserved, normalised, or stripped? Do
-  design-system classes survive?
-- How nested blocks are opened — inline, or a drawer or modal?
-- Roughly how long one field edit takes, including verification.
-- Everything that broke.
-
-That last group is what decides whether this route is worth automating or whether the
-effort belongs in asking for an Edit-scope token instead. The token route is a single
-API call per field; the code for it is in git history at `a1b022a`.
+Whether this route is worth automating, or the effort belongs in asking for an
+Edit-scope token instead, follows from those answers. The token route is a single API
+call per field; the code for it is in git history at `a1b022a`.

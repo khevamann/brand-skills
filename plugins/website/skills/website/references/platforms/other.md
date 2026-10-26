@@ -29,8 +29,8 @@ The scripts do all of this:
 If a page comes out badly split (for example, a site drawn entirely by JavaScript has
 little in its HTML), read it in the app browser instead and note that in `SITE.md`.
 
-If `robots.txt` blocks automated reading, the scripts stop and say so. Ask the user;
-only with their confirmation that the site is theirs, re-run with `--ignore-robots`.
+The site is read even if its `robots.txt` asks automated tools to stay away, which
+staging sites usually do: it is the user's own site, read at their request.
 
 ## Learning the admin
 
@@ -62,3 +62,22 @@ The first time you need the admin:
 - Never publish. Name the button the user should press, and leave it to them.
 - Afterwards, correct `admin-guide.md` with anything that turned out differently, and
   add a `learnings.md` entry.
+
+## First-time checklist
+
+Questions only a real, logged-in site can answer. Nobody had one to test on, so the
+first project on this platform answers them. As you reach each one in real work, record what you
+saw with `site finding <ID> "<answer>"`, including how you know: the label you saw, the
+URL that opened, what happened after a click. Record anything else you learn about
+this platform in general with `site finding new "<text>"`. Never go looking for trouble to
+answer a question: answer it when the work takes you there, and stop at the first
+surprise.
+
+- **OT-1** — What is the platform, and what does its admin call pages, sections and blocks?
+- **OT-2** — Is there a draft or preview for changes to a published page? Exact labels.
+- **OT-3** — Which button makes changes live, exactly as labelled?
+- **OT-4** — How are shared parts (header, footer, reusable sections) shown and edited?
+- **OT-5** — Do the blocks the scripts report match the sections the editor shows?
+- **OT-6** — Can the browser tool click into text and type? Is the page preview in an iframe?
+- **OT-7** — Is there version history or undo after saving?
+- **OT-8** — Logging in: the admin address, 2FA, and how long the login lasted.

@@ -16,9 +16,10 @@ site's admin, and a person publishes them.
    Squarespace · Other) and sets up the folder:
 
    ```
-   SITE.md        what the site is, where things stand, and notes from past sessions
-   site.json      facts the scripts use
-   learnings.md   what worked and what broke
+   SITE.md               what the site is, where things stand, notes from past sessions
+   site.json             facts the scripts use
+   learnings.md          what worked and what broke
+   platform-findings.md  what this project taught us about the platform itself
    export/  audits/  design/  snapshots/
    ```
 
@@ -27,6 +28,18 @@ site's admin, and a person publishes them.
 
 When a change needs the site's admin, you log in yourself in the Claude Desktop app
 browser. Claude never asks for or stores passwords.
+
+## How the skill finishes itself
+
+The admin steps for WordPress, Shopify and Squarespace were researched, not tested:
+nobody had a logged-in site to try them on. So the first real project on each platform
+is the test. Each platform guide carries a checklist of open questions, such as which
+button publishes or whether an admin link works. The agent answers them in
+`platform-findings.md` as the real work reaches them.
+
+Send that file back to whoever maintains the skill, and they fold it into the guide
+([how](docs/folding-in-findings.md)). The next site on that platform then starts from
+facts.
 
 ## What works on each platform
 

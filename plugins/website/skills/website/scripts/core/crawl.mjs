@@ -2,7 +2,10 @@
 //
 // robots.txt → its Sitemap: lines → sitemap.xml and sitemap indexes. Only when there
 // is no sitemap, follow links from the homepage. One request at a time, with a pause
-// between them, a capped page count, and robots.txt Disallow rules respected.
+// between them (robots.txt's crawl delay when it sets one) and a capped page count.
+//
+// robots.txt's Disallow rules are not applied: the only site read is the project's
+// own, at its owner's request, and staging sites routinely disallow everything.
 
 import { SiteError } from './cli.mjs';
 import { parse, findAll } from './html.mjs';
@@ -27,11 +30,9 @@ export async function getText(url, { timeout = 20000, accept } = {}) {
   }
 }
 
-/** robots.txt rules for `*`, plus its sitemaps and crawl delay. */
+/** What robots.txt says that matters here: its sitemaps and crawl delay. */
 export function parseRobots(text) {
   const sitemaps = [];
-  const disallow = [];
-  const allow = [];
   let crawlDelay = null;
   let applies = false;
   let lastWasAgent = false;
@@ -53,22 +54,9 @@ export function parseRobots(text) {
     }
     lastWasAgent = false;
     if (!applies) continue;
-    if (key === 'disallow' && value) disallow.push(value);
-    if (key === 'allow' && value) allow.push(value);
     if (key === 'crawl-delay' && Number(value) > 0) crawlDelay = Number(value);
   }
-  return { sitemaps, disallow, allow, crawlDelay };
-}
-
-const ruleMatches = (rule, path) => {
-  const re = new RegExp('^' + rule.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\\\$$/, '$'));
-  return re.test(path);
-};
-
-/** Longest matching rule wins, as robots.txt specifies. */
-export function allowedByRobots(robots, path) {
-  const best = (rules) => Math.max(-1, ...rules.filter((r) => ruleMatches(r, path)).map((r) => r.length));
-  return best(robots.allow) >= best(robots.disallow);
+  return { sitemaps, crawlDelay };
 }
 
 /** <loc> entries from a sitemap or sitemap index. */
@@ -92,12 +80,10 @@ function priority(url) {
 }
 
 /**
- * Discover a site's pages. Returns { pages: [url], source, total, blockedByRobots, robots }.
- * `limit` caps how many are returned; `total` says how many were found and allowed.
- * `ignoreRobots` is for a site owner reading their own site — staging sites often
- * disallow everything — and must only ever be set on their explicit say-so.
+ * Discover a site's pages. Returns { pages: [url], source, total, robots }.
+ * `limit` caps how many are returned; `total` says how many were found.
  */
-export async function discoverPages(origin, { limit = 200, log = () => {}, ignoreRobots = false } = {}) {
+export async function discoverPages(origin, { limit = 200, log = () => {} } = {}) {
   const host = new URL(origin).host;
   const sameSite = (u) => {
     try {
@@ -118,7 +104,6 @@ export async function discoverPages(origin, { limit = 200, log = () => {}, ignor
   const robots = robotsRes.ok && !/<html/i.test(robotsRes.text.slice(0, 500))
     ? parseRobots(robotsRes.text)
     : parseRobots('');
-  const permitted = (u) => ignoreRobots || allowedByRobots(robots, new URL(u).pathname + new URL(u).search);
 
   // Sitemaps declared in robots.txt, else the conventional locations until one works.
   const found = new Set();
@@ -155,7 +140,7 @@ export async function discoverPages(origin, { limit = 200, log = () => {}, ignor
     const visited = new Set();
     while (frontier.length && visited.size < Math.min(limit, 60)) {
       const url = frontier.shift();
-      if (visited.has(url) || !permitted(url)) continue;
+      if (visited.has(url)) continue;
       visited.add(url);
       found.add(url);
       const res = await getText(url);
@@ -170,14 +155,14 @@ export async function discoverPages(origin, { limit = 200, log = () => {}, ignor
     }
   }
 
-  const all = [...found].filter(permitted);
+  const all = [...found];
   const pages = all.sort((a, b) => priority(a) - priority(b) || a.localeCompare(b)).slice(0, limit);
   const home = normalise(origin + '/');
-  if (!pages.includes(home) && permitted(home)) {
+  if (!pages.includes(home)) {
     pages.unshift(home);
     if (pages.length > limit) pages.pop();
   }
-  return { pages, source, total: all.length, blockedByRobots: found.size - all.length, robots };
+  return { pages, source, total: all.length, robots };
 }
 
 /** A page id that is readable, stable, and safe as a file name. */

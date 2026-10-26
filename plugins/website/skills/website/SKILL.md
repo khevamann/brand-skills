@@ -92,9 +92,9 @@ $SITE entries --search "..." --status all     # Craft API: find an entry
 A page is named by URL, by path (`/about`) or by its id in the export (`about`); on
 Craft's API, by entry id.
 
-If an export says the site's `robots.txt` blocks automated reading (common on staging
-sites), stop and ask the user. Only if they confirm it is their own site, re-run with
-`--ignore-robots`, and note their answer in `SITE.md`.
+The scripts read the project's site even where its `robots.txt` asks automated tools to
+stay away (staging sites usually do): it is the user's own site, read at their request.
+Nothing to ask about or explain.
 
 **2. Prepare a design change** — the round trip through Claude Design.
 
@@ -112,7 +112,9 @@ $SITE scope <page> result.json   # do they stay on one page?
 always as a draft or preview. **The user publishes, never you.** The user logs in
 themselves; never ask for, type or store a password or 2FA code. If the login has
 expired, pause and ask them to log in again. Follow the platform's apply guide, and
-the project's `admin-guide.md` where it says something more specific.
+the project's `admin-guide.md` where it says something more specific. `$SITE page
+<page>` shows a direct link into the admin where the platform allows one (the page's
+editor, or Shopify's theme editor at that page).
 
 Be straight about limits when asked. They are structural, not missing features:
 
@@ -145,7 +147,8 @@ answer as a note if it is a standing rule.
 ## Commands
 
 Project, on every site: `$SITE start [url]`, `$SITE detect <url>`, `$SITE init <url>
---platform <p>`, `$SITE note "<text>"`, `$SITE help [craft|generic]`.
+--platform <p>`, `$SITE note "<text>"`, `$SITE findings`, `$SITE finding <ID|new>
+"<text>"`, `$SITE help [craft|generic]`.
 
 On every site:
 
@@ -192,15 +195,34 @@ default, and everything is written into the folder.
 - **Never publish, and never press a button that publishes.** Every platform guide
   names the ones to avoid.
 
-## When the bundled guides turn out wrong
+## The first real project on a platform is its test
 
-Most apply guides are still unverified. When reality differs:
+Nobody had a logged-in WordPress, Shopify or Squarespace site to test the admin steps
+on, so the guides' admin instructions are researched but unverified. The first person
+to use the skill on a platform is the test, and this skill gets finished from what that
+session records. So, on every project:
 
-1. Record what actually happened in the project's `learnings.md` and `admin-guide.md`.
-   Those are read first next time, and they override the bundled guide.
-2. If the lesson applies to the platform in general, not just this site, tell the user
-   so the skill's maintainer can fold it into the guide. Do not edit files inside this
-   skill's directory: they are replaced on every update.
+- **`$SITE start` says how much of the platform's checklist is answered.** `$SITE
+  findings` lists the open questions: which button publishes, whether an admin link
+  works, how pasted text behaves.
+- **Do the work, carefully.** Use the guide as a hypothesis. Do not go looking for
+  trouble to answer questions; answer each one when the real work reaches it. Stop at
+  the first surprise, tell the user what you expected and what you saw, and ask how to
+  go on.
+- **Write down what you saw, as you see it** — not at the end of the session:
+  `$SITE finding SH-3 "Create template is under the template picker at the top of the
+  theme editor; the new template starts as a copy"`. Say how you know: the exact label,
+  the URL that opened, what happened after the click. Anything else you learn about the
+  platform in general goes in `$SITE finding new "<text>"`.
+- **Keep the two kinds of learning apart.** About the platform in general:
+  `platform-findings.md`. About this one site: `SITE.md` notes, `admin-guide.md`,
+  `learnings.md`.
+- **Tell the user at the end** when `platform-findings.md` gained something, and that
+  it should go to whoever maintains the website skill. They fold it into the bundled
+  guide, so the next site on that platform starts from facts.
+
+The project's own files are read first in later sessions and override the bundled
+guide. Never edit files inside this skill's directory: they are replaced on every update.
 
 ## Reference
 

@@ -6,6 +6,7 @@
 //   site.json       machine-readable facts and state
 //   learnings.md    dated run log
 //   admin-guide.md  how this site's admin actually behaves (written once explored)
+//   platform-findings.md  what this project taught us about the platform (see findings.mjs)
 //   export/ audits/ design/ snapshots/
 //   CLAUDE.md       a marked block pointing at SITE.md, so new sessions find it
 //
@@ -15,6 +16,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { SiteError, today } from './cli.mjs';
+import { ensureFindings } from './findings.mjs';
 
 export const PLATFORMS = {
   craft: 'Craft CMS',
@@ -112,6 +114,7 @@ export function initProject(dir, { url, platform, confirmedBy, detection = null,
 
   if (!existsSync(paths.siteMd)) writeFileSync(paths.siteMd, siteMdTemplate(site));
   if (!existsSync(paths.learnings)) writeFileSync(paths.learnings, LEARNINGS_TEMPLATE);
+  ensureFindings(project);
   writeClaudeMdBlock(paths.claudeMd);
   return project;
 }

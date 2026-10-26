@@ -135,3 +135,22 @@ types, so the field-name inconsistencies above do not matter when reading.
 The search index on the test site returned nothing for `why kirby` while the page
 existed at `admissions/why-kirby`. If a search comes back empty, list and filter
 rather than concluding the page is absent.
+
+## First-time checklist
+
+Questions only a real, logged-in site can answer. Nobody had one to test on, so the
+first project on Craft answers them. As you reach each one in real work, record what you
+saw with `site finding <ID> "<answer>"`, including how you know: the label you saw, the
+URL that opened, what happened after a click. Record anything else you learn about
+Craft in general with `site finding new "<text>"`. Never go looking for trouble to
+answer a question: answer it when the work takes you there, and stop at the first
+surprise.
+
+- **CR-1** — What is the real URL for editing an entry? Does `/admin/entries/<section>/<id>` work?
+- **CR-2** — What is the exact control and label for creating a draft of an entry?
+- **CR-3** — Are block (nested entry) ids visible anywhere in the control panel?
+- **CR-4** — What happens to pasted HTML in a rich-text field: kept, cleaned, or stripped? Do design-system classes survive?
+- **CR-5** — How do nested blocks open for editing: inline, in a drawer, or in a modal?
+- **CR-6** — Roughly how long did one field edit take, including checking it?
+- **CR-7** — After saving a draft, does `site drafts <id>` list it?
+- **CR-8** — Logging in: the control-panel address, 2FA, and how long the login lasted.

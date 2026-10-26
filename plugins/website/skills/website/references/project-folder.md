@@ -10,6 +10,7 @@ stopped**. Nobody should have to keep one long conversation alive.
   site.json        facts and state the scripts use (platform, endpoints, last export…)
   learnings.md     dated log: did / worked / broke / next time
   admin-guide.md   how THIS site's admin actually behaves (written once explored)
+  platform-findings.md   what this project taught us about the PLATFORM, for the skill
   export/          the site, exported
   audits/          audit reports, one per run, dated
   design/          design system, briefs, results from Claude Design
@@ -17,8 +18,8 @@ stopped**. Nobody should have to keep one long conversation alive.
   CLAUDE.md        a marked block telling new sessions to read SITE.md
 ```
 
-`site init` creates `SITE.md`, `site.json`, `learnings.md` and the `CLAUDE.md` block.
-The rest appear as work happens.
+`site init` creates `SITE.md`, `site.json`, `learnings.md`, `platform-findings.md` and
+the `CLAUDE.md` block. The rest appear as work happens.
 
 ## SITE.md
 
@@ -71,6 +72,15 @@ platform in general. Cover:
 - A "never click" list.
 
 Mark each item with the date it was checked.
+
+## platform-findings.md
+
+Seeded from the platform guide's "First-time checklist": the questions only a real,
+logged-in admin can answer. Answer them with `site finding <ID> "<what you saw>"` as the
+work reaches them, and add anything else about the platform with `site finding new`.
+This file is about the platform in general (WordPress, Shopify…), not this site. It goes
+back to whoever maintains the skill, who folds it into the bundled guide. That is how
+the skill learns from its first real use on each platform.
 
 ## site.json
 

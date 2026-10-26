@@ -17,6 +17,7 @@ import {
   PLATFORMS, loadProject, initProject, addNote, readNotes, projectPaths, writeClaudeMdBlock,
   CLAUDE_MD_START,
 } from './core/project.mjs';
+import { ensureFindings, readFindings, recordFinding } from './core/findings.mjs';
 import * as craft from './adapters/craft/cli.mjs';
 import * as generic from './adapters/generic/cli.mjs';
 
@@ -39,6 +40,8 @@ PROJECT
       --confirmed-by user|detection  Who decided the platform (default: detection)
       --graphql <url>                Craft only: the GraphQL endpoint, if detection missed it
   site note "<text>"                 Add a dated note to SITE.md for future sessions
+  site findings                      The platform's first-time checklist: what is still unknown
+  site finding <ID|new> "<text>"     Record what a real admin showed (platform-findings.md)
 
 PLATFORM COMMANDS
   Depend on the site. \`site help craft\` lists the Craft API ones; \`site help generic\`
@@ -155,6 +158,7 @@ async function cmdInit(url, flags) {
   }
 
   const project = initProject('.', { url: target, platform, confirmedBy, detection, extra });
+  const questions = readFindings(project)?.questions.length ?? 0;
   const status = platformStatus(project.site);
   out(
     [
@@ -165,6 +169,7 @@ async function cmdInit(url, flags) {
       '  site.json     facts and state the scripts use',
       '  learnings.md  dated log of what worked and what broke',
       '  CLAUDE.md     points new sessions at SITE.md',
+      ...(questions ? [`  platform-findings.md  ${questions} open questions about ${project.site.platformName}, answered as you work`] : []),
       '',
       `What works here: ${status.summary}`,
       `Guide: ${status.guide}`,
@@ -205,6 +210,9 @@ function cmdStart(url) {
     writeClaudeMdBlock(paths.claudeMd);
   }
 
+  ensureFindings(project);
+  const findings = readFindings(project);
+  const open = findings?.questions.filter((q) => q.status === 'open') ?? [];
   const status = platformStatus(site);
   const state = site.state ?? {};
   const notes = readNotes(project);
@@ -224,6 +232,12 @@ function cmdStart(url) {
     '',
     `What works here: ${status.summary}`,
     `Guide: ${status.guide}`,
+    ...(findings
+      ? [
+          `Platform checklist: ${findings.questions.length - open.length} of ${findings.questions.length} answered` +
+            (open.length ? ` — answer the rest as the work reaches them (site findings)` : ' — complete; send platform-findings.md to the skill maintainer'),
+        ]
+      : []),
     '',
     `NOTES (${notes.length}${notes.length > 12 ? ', latest 12' : ''})`,
     ...(notes.length ? notes.slice(-12).map((n) => `  ${n}`) : ['  none yet']),
@@ -231,6 +245,37 @@ function cmdStart(url) {
     'NEXT: read SITE.md in full (and learnings.md before any apply), then carry on.',
   ];
   out(lines.join('\n'));
+}
+
+function cmdFindings() {
+  const project = loadProject('.');
+  if (!project) throw new SiteError('No project in this folder. Run `site start <url>` first.');
+  ensureFindings(project);
+  const findings = readFindings(project);
+  if (!findings) return out(`${project.site.platformName} has no first-time checklist.`);
+  const open = findings.questions.filter((q) => q.status === 'open');
+  out([
+    `PLATFORM FINDINGS — ${project.site.platformName} (${findings.file})`,
+    '',
+    `${findings.questions.length - open.length} of ${findings.questions.length} checklist questions answered; ${findings.other.length} other findings.`,
+    '',
+    'STILL UNKNOWN — answer each when the work reaches it, with: site finding <ID> "<what you saw>"',
+    ...(open.length ? open.map((q) => `  ${q.id}  ${q.question}`) : ['  none']),
+    '',
+    'ANSWERED',
+    ...(findings.questions.filter((q) => q.status !== 'open').map((q) => `  ${q.id}  ${q.answers.at(-1)?.slice(2) ?? ''}`) || []),
+    '',
+    'When this session learned something, tell the user that platform-findings.md has news for',
+    "whoever maintains the website skill, so the skill's own guide can be updated.",
+  ].join('\n'));
+}
+
+function cmdFinding(positional) {
+  const project = loadProject('.');
+  if (!project) throw new SiteError('No project in this folder. Run `site start <url>` first.');
+  const [id, ...words] = positional;
+  if (!id) throw new SiteError('Usage: site finding <ID|new> "<what you saw, and how you know>"');
+  out(`Recorded in platform-findings.md (${id}): ${recordFinding(project, id === 'new' ? 'new' : id, words.join(' '))}`);
 }
 
 function cmdNote(positional) {
@@ -261,6 +306,10 @@ async function main() {
       return cmdInit(positional[0], flags);
     case 'note':
       return cmdNote(positional);
+    case 'findings':
+      return cmdFindings();
+    case 'finding':
+      return cmdFinding(positional);
   }
 
   // Everything else belongs to a platform adapter.

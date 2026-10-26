@@ -498,16 +498,28 @@ plugins/castle-keys-wordpress/           optional Tier 2
    Squarespace site, a Webflow site, and the Kirby Craft front end without its API.
    What steps 3–5 still add is mainly reading through each platform's own data (WP REST
    with a login, Shopify Storefront API, Squarespace `?format=json`) and the apply paths.
-3. **WordPress**, Gutenberg plus Elementor: the biggest demand, and already reported to
-   half-work.
-4. **Squarespace.** A small adapter with a clean read; the work is the draft-or-duplicate
-   apply path.
-5. **Shopify.** The most scope rules and the most Tier 2 upside. Do it last, so the scope
-   gate is mature by then.
-6. **Tier 2 plugins.** Shopify CLI and connector, WP.com connector and Application
+3. **Platform metadata and the findings loop. Done 2026-10-26.** No test sites were
+   available, so the first real project on each platform is its test.
+   - Pages now carry the platform's own ids, with direct admin links: WordPress post
+     ids, Shopify store/theme/resource ids, Squarespace version and collection ids.
+     These links are unconfirmed until someone opens one.
+   - Each platform guide ends with a first-time checklist of what only a logged-in
+     admin can answer.
+   - Each project gets a `platform-findings.md`, answered as work reaches each
+     question.
+   - Findings travel back to the maintainer and are folded into the guides
+     (`docs/folding-in-findings.md`).
+   - `robots.txt` Disallow rules are no longer applied: the only site read is the
+     owner's own.
+4. **Fold in the first findings per platform** as they arrive. Rewrite the guide's
+   admin steps from them, and confirm or fix the link patterns in
+   `core/platforminfo.mjs`.
+5. **Logged-in reads where they pay off**, once findings confirm the mechanics:
+   - WordPress `?context=edit` through the user's browser session (WP-9), for raw
+     blocks and synced patterns;
+   - Shopify's template files through the code editor.
+6. **Tier 2 plugins.** Shopify CLI and connector; WP.com connector and Application
    Passwords.
-7. **First real apply on each platform.** Rewrite each `<p>-apply.md` from what actually
-   happened. **Nothing about apply is verified on any platform yet, Craft included.**
 
 ## 10. Biggest risks
 
