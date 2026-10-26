@@ -66,18 +66,34 @@ The first time you need the admin:
 ## First-time checklist
 
 Questions only a real, logged-in site can answer. Nobody had one to test on, so the
-first project on this platform answers them. As you reach each one in real work, record what you
-saw with `site finding <ID> "<answer>"`, including how you know: the label you saw, the
-URL that opened, what happened after a click. Record anything else you learn about
-this platform in general with `site finding new "<text>"`. Never go looking for trouble to
-answer a question: answer it when the work takes you there, and stop at the first
-surprise.
+first project on this platform answers them, in the order a real session reaches them. Work
+through them with the user as the work goes; never hand over this list. Answer what
+you can see for yourself with `site finding <ID> "<answer>"`, saying how you know: the
+label you saw, the URL that opened, what happened after a click. Questions marked
+_(ask the user)_ need the person: ask each one in plain words, one at a time, when it
+comes up. Record anything else you learn about this platform in general with
+`site finding new "<text>"`. Never go looking for trouble to answer a question, and stop
+at the first surprise.
 
-- **OT-1** — What is the platform, and what does its admin call pages, sections and blocks?
-- **OT-2** — Is there a draft or preview for changes to a published page? Exact labels.
-- **OT-3** — Which button makes changes live, exactly as labelled?
+### Logging in
+
+- **OT-1** — _(ask the user)_ What is the admin address, and was there 2FA? (Later, note how long the login lasted.)
+- **OT-2** — What is the platform, and what does its admin call pages, sections and blocks?
+
+### Opening a page
+
+- **OT-3** — Do the blocks the scripts report match the sections the editor shows?
 - **OT-4** — How are shared parts (header, footer, reusable sections) shown and edited?
-- **OT-5** — Do the blocks the scripts report match the sections the editor shows?
-- **OT-6** — Can the browser tool click into text and type? Is the page preview in an iframe?
-- **OT-7** — Is there version history or undo after saving?
-- **OT-8** — Logging in: the admin address, 2FA, and how long the login lasted.
+
+### Making a draft
+
+- **OT-5** — Is there a draft or preview for changes to a published page? Exact labels.
+- **OT-6** — Which button makes changes live, exactly as labelled?
+
+### Editing
+
+- **OT-7** — Can the browser tool click into text and type? Is the page preview in an iframe?
+
+### Saving
+
+- **OT-8** — Is there version history or undo after saving?

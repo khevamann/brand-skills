@@ -6,7 +6,7 @@ import { mkdtempSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { initProject, PLATFORMS } from '../core/project.mjs';
-import { checklistFor, ensureFindings, readFindings, recordFinding, findingsPath } from '../core/findings.mjs';
+import { checklistFor, ensureFindings, readFindings, recordFinding, findingsPath, nextQuestions, MAINTAINER } from '../core/findings.mjs';
 
 const project = (platform = 'wordpress') =>
   initProject(mkdtempSync(join(tmpdir(), 'site-findings-')), { url: 'https://x.example', platform, confirmedBy: 'user' });
@@ -24,6 +24,36 @@ test('every platform guide has a first-time checklist with unique, prefixed ids'
       seen.add(id);
     }
   }
+});
+
+test('every checklist follows a session: it starts at logging in, and every question has a step', () => {
+  for (const platform of Object.keys(PLATFORMS)) {
+    const items = checklistFor(platform);
+    assert.equal(items[0].stage, 'Logging in', platform);
+    assert.ok(items.every((q) => q.stage), `${platform}: a question has no step`);
+    assert.ok(items.some((q) => q.askUser), `${platform}: nothing is marked for asking the user`);
+    assert.ok(items.every((q) => !q.question.startsWith('_(')), 'the ask-the-user marker is stripped from the question');
+  }
+});
+
+test('the walk-through offers one step at a time, and moves on as questions are answered', () => {
+  const p = project('squarespace');
+  let next = nextQuestions(p);
+  assert.equal(next.stage, 'Logging in');
+  assert.deepEqual(next.now.map((q) => q.id), ['SQ-1', 'SQ-2']);
+  assert.ok(next.now.every((q) => q.askUser));
+  assert.equal(next.later, checklistFor('squarespace').length - 2);
+
+  recordFinding(p, 'SQ-1', 'Owner, no 2FA.');
+  recordFinding(p, 'SQ-2', 'Core plan; no Create draft.');
+  next = nextQuestions(p);
+  assert.equal(next.stage, 'Opening a page');
+  assert.equal(next.answered, 2);
+});
+
+test('the findings file says who to send it to', () => {
+  assert.equal(MAINTAINER, 'Kheva');
+  assert.match(readFileSync(findingsPath(project()), 'utf8'), /Please send this file to Kheva\*\*, who maintains the website skill/);
 });
 
 test('a new project gets the platform checklist, all open', () => {

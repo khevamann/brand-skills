@@ -78,9 +78,10 @@ Mark each item with the date it was checked.
 Seeded from the platform guide's "First-time checklist": the questions only a real,
 logged-in admin can answer. Answer them with `site finding <ID> "<what you saw>"` as the
 work reaches them, and add anything else about the platform with `site finding new`.
-This file is about the platform in general (WordPress, Shopify…), not this site. It goes
-back to whoever maintains the skill, who folds it into the bundled guide. That is how
-the skill learns from its first real use on each platform.
+Questions come in the order a session reaches them, and `site findings` shows only the
+current step's. This file is about the platform in general (WordPress, Shopify…), not
+this site. The user sends it to Kheva, who maintains the skill and folds it into the
+bundled guide. That is how the skill learns from its first real use on each platform.
 
 ## site.json
 

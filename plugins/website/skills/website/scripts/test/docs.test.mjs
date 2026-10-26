@@ -75,6 +75,13 @@ test('SKILL.md starts every session by resuming the project folder', () => {
   }
 });
 
+test('SKILL.md walks the user through findings and names who they go to', () => {
+  assert.match(skill, /\$SITE findings/);
+  assert.match(skill, /one at a time/);
+  assert.match(skill, /never turn it into a survey|Never show them the checklist/);
+  assert.match(skill, /send\s+`platform-findings\.md` to Kheva/);
+});
+
 test('every reference file SKILL.md names exists', () => {
   const named = [...skill.matchAll(/references\/([a-z-]+(?:\/[a-z-]+)*\.md)/g)].map((m) => m[1]);
   assert.ok(named.length >= 5, 'expected SKILL.md to name its reference files');

@@ -17,7 +17,7 @@ import {
   PLATFORMS, loadProject, initProject, addNote, readNotes, projectPaths, writeClaudeMdBlock,
   CLAUDE_MD_START,
 } from './core/project.mjs';
-import { ensureFindings, readFindings, recordFinding } from './core/findings.mjs';
+import { ensureFindings, readFindings, recordFinding, nextQuestions, findingsPath, MAINTAINER } from './core/findings.mjs';
 import * as craft from './adapters/craft/cli.mjs';
 import * as generic from './adapters/generic/cli.mjs';
 
@@ -40,7 +40,7 @@ PROJECT
       --confirmed-by user|detection  Who decided the platform (default: detection)
       --graphql <url>                Craft only: the GraphQL endpoint, if detection missed it
   site note "<text>"                 Add a dated note to SITE.md for future sessions
-  site findings                      The platform's first-time checklist: what is still unknown
+  site findings [--all]              The platform checklist: the questions to answer now
   site finding <ID|new> "<text>"     Record what a real admin showed (platform-findings.md)
 
 PLATFORM COMMANDS
@@ -211,8 +211,7 @@ function cmdStart(url) {
   }
 
   ensureFindings(project);
-  const findings = readFindings(project);
-  const open = findings?.questions.filter((q) => q.status === 'open') ?? [];
+  const next = nextQuestions(project);
   const status = platformStatus(site);
   const state = site.state ?? {};
   const notes = readNotes(project);
@@ -232,10 +231,13 @@ function cmdStart(url) {
     '',
     `What works here: ${status.summary}`,
     `Guide: ${status.guide}`,
-    ...(findings
+    ...(next
       ? [
-          `Platform checklist: ${findings.questions.length - open.length} of ${findings.questions.length} answered` +
-            (open.length ? ` — answer the rest as the work reaches them (site findings)` : ' — complete; send platform-findings.md to the skill maintainer'),
+          `Platform checklist: ${next.answered} of ${next.findings.questions.length} answered` +
+            (next.now.length ? ` — next at "${next.stage}"; run site findings when the work gets there` : ' — complete'),
+          ...(next.answered || next.findings.other.length
+            ? [`  This project has findings: remind the user to send platform-findings.md to ${MAINTAINER}.`]
+            : []),
         ]
       : []),
     '',
@@ -247,27 +249,40 @@ function cmdStart(url) {
   out(lines.join('\n'));
 }
 
-function cmdFindings() {
+function cmdFindings(flags) {
   const project = loadProject('.');
   if (!project) throw new SiteError('No project in this folder. Run `site start <url>` first.');
   ensureFindings(project);
-  const findings = readFindings(project);
-  if (!findings) return out(`${project.site.platformName} has no first-time checklist.`);
-  const open = findings.questions.filter((q) => q.status === 'open');
-  out([
-    `PLATFORM FINDINGS — ${project.site.platformName} (${findings.file})`,
+  const next = nextQuestions(project);
+  if (!next) return out(`${project.site.platformName} has no first-time checklist.`);
+  const { findings } = next;
+  const total = findings.questions.length;
+  const lines = [`PLATFORM CHECKLIST — ${project.site.platformName}: ${next.answered} of ${total} answered`, ''];
+  const show = (q) => `  ${q.id}  ${q.askUser ? '[ask the user] ' : ''}${q.question}`;
+
+  if (flags.all) {
+    lines.push('ALL OPEN QUESTIONS (for you, not to show the user)');
+    for (const q of findings.questions.filter((x) => x.status === 'open')) lines.push(`  ${q.id}  ${q.question}`);
+  } else if (next.now.length) {
+    lines.push(`NOW — when the work reaches "${next.stage}":`, ...next.now.map(show));
+    if (next.later) lines.push('', `${next.later} more come up later in the session, as the work gets there.`);
+  } else {
+    lines.push('Every checklist question is answered.');
+  }
+  lines.push(
     '',
-    `${findings.questions.length - open.length} of ${findings.questions.length} checklist questions answered; ${findings.other.length} other findings.`,
+    'HOW TO WORK THROUGH THEM',
+    '  - Never show the user this list. Take one question at a time, when the work reaches it.',
+    '  - Answer what you can see yourself: site finding <ID> "<what you saw, and how you know>".',
+    '  - Ask the user only the [ask the user] ones, in plain words, one at a time.',
+    '  - Stop at the first surprise: tell the user what you expected and what you saw.',
     '',
-    'STILL UNKNOWN — answer each when the work reaches it, with: site finding <ID> "<what you saw>"',
-    ...(open.length ? open.map((q) => `  ${q.id}  ${q.question}`) : ['  none']),
-    '',
-    'ANSWERED',
-    ...(findings.questions.filter((q) => q.status !== 'open').map((q) => `  ${q.id}  ${q.answers.at(-1)?.slice(2) ?? ''}`) || []),
-    '',
-    'When this session learned something, tell the user that platform-findings.md has news for',
-    "whoever maintains the website skill, so the skill's own guide can be updated.",
-  ].join('\n'));
+    findings.questions.some((q) => q.status !== 'open') || findings.other.length
+      ? `This project has findings. Before the session ends, ask the user to send ${findingsPath(project)}\n` +
+          `to ${MAINTAINER}, who maintains the website skill.`
+      : `Once anything is recorded, ask the user to send platform-findings.md to ${MAINTAINER}.`,
+  );
+  out(lines.join('\n'));
 }
 
 function cmdFinding(positional) {
@@ -275,7 +290,15 @@ function cmdFinding(positional) {
   if (!project) throw new SiteError('No project in this folder. Run `site start <url>` first.');
   const [id, ...words] = positional;
   if (!id) throw new SiteError('Usage: site finding <ID|new> "<what you saw, and how you know>"');
-  out(`Recorded in platform-findings.md (${id}): ${recordFinding(project, id === 'new' ? 'new' : id, words.join(' '))}`);
+  const line = recordFinding(project, id === 'new' ? 'new' : id, words.join(' '));
+  const next = nextQuestions(project);
+  out([
+    `Recorded in platform-findings.md (${id}): ${line}`,
+    next?.now.length
+      ? `Next, when the work reaches "${next.stage}": ${next.now[0].id} — ${next.now[0].askUser ? '[ask the user] ' : ''}${next.now[0].question}`
+      : 'Every checklist question is answered.',
+    `Before the session ends, ask the user to send platform-findings.md to ${MAINTAINER}.`,
+  ].join('\n'));
 }
 
 function cmdNote(positional) {
@@ -307,7 +330,7 @@ async function main() {
     case 'note':
       return cmdNote(positional);
     case 'findings':
-      return cmdFindings();
+      return cmdFindings(flags);
     case 'finding':
       return cmdFinding(positional);
   }

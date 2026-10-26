@@ -34,12 +34,13 @@ browser. Claude never asks for or stores passwords.
 The admin steps for WordPress, Shopify and Squarespace were researched, not tested:
 nobody had a logged-in site to try them on. So the first real project on each platform
 is the test. Each platform guide carries a checklist of open questions, such as which
-button publishes or whether an admin link works. The agent answers them in
-`platform-findings.md` as the real work reaches them.
+button publishes or whether an admin link works. Claude works through them step by step
+as the real work reaches them, asking the user only what it can't see for itself, and
+records the answers in `platform-findings.md`.
 
-Send that file back to whoever maintains the skill, and they fold it into the guide
-([how](docs/folding-in-findings.md)). The next site on that platform then starts from
-facts.
+Claude asks the user to send that file to Kheva, who maintains the skill and folds it
+into the guide ([how](docs/folding-in-findings.md)). The next site on that platform
+then starts from facts.
 
 ## What works on each platform
 

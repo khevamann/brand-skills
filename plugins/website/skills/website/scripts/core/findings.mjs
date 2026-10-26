@@ -5,8 +5,8 @@
 // works, how pasted text behaves). Nobody has a test site, so the first real project
 // on a platform is the test. Its folder gets a platform-findings.md seeded from that
 // checklist; the agent answers questions as it reaches them and records anything
-// else it learns about the platform. The file then goes back to whoever maintains the
-// skill, who folds the answers into the guide — see docs/folding-in-findings.md.
+// else it learns about the platform. The file then goes back to Kheva, who maintains
+// the skill and folds the answers into the guide — see docs/folding-in-findings.md.
 //
 // Findings are about the platform in general. Facts about one site belong in its
 // SITE.md and admin-guide.md instead.
@@ -17,12 +17,19 @@ import { fileURLToPath } from 'node:url';
 import { SiteError, today } from './cli.mjs';
 
 const GUIDES = fileURLToPath(new URL('../../references/platforms/', import.meta.url));
+
+/** Who maintains the skill, and so who findings files go back to. */
+export const MAINTAINER = 'Kheva';
 const CHECKLIST_HEADING = '## First-time checklist';
 const OTHER_HEADING = '## Other findings';
 
 export const findingsPath = (project) => join(project.paths.root, 'platform-findings.md');
 
-/** The checklist questions from a platform guide: [{ id, question }]. */
+/**
+ * The checklist questions from a platform guide, in the order a real session reaches
+ * them: [{ id, question, stage, askUser }]. Stages are the guide's `###` headings
+ * (Logging in, Opening a page, Making a draft, Editing, Saving).
+ */
 export function checklistFor(platform, guidesDir = GUIDES) {
   const file = join(guidesDir, `${platform}.md`);
   if (!existsSync(file)) return [];
@@ -31,11 +38,47 @@ export function checklistFor(platform, guidesDir = GUIDES) {
   if (at < 0) return [];
   const section = body.slice(at + CHECKLIST_HEADING.length).split(/\n## /)[0];
   const items = [];
-  for (const m of section.matchAll(/^- \*\*([A-Z]{2}-\d+)\*\* — ([\s\S]*?)(?=\n- \*\*[A-Z]{2}-\d+\*\*|\n\n|$)/gm)) {
-    items.push({ id: m[1], question: m[2].replace(/\s*\n\s*/g, ' ').trim() });
+  let stage = null;
+  for (const m of section.matchAll(/^### (.+)$|^- \*\*([A-Z]{2}-\d+)\*\* — ([\s\S]*?)(?=\n- \*\*[A-Z]{2}-\d+\*\*|\n\n|$)/gm)) {
+    if (m[1]) {
+      stage = m[1].trim();
+      continue;
+    }
+    const raw = m[3].replace(/\s*\n\s*/g, ' ').trim();
+    items.push({
+      id: m[2],
+      question: raw.replace(/^_\(ask the user\)_\s*/, ''),
+      stage,
+      askUser: raw.startsWith('_(ask the user)_'),
+    });
   }
   return items;
 }
+
+/**
+ * The questions to work on now: the open ones in the earliest stage that still has
+ * any. Walking through them stage by stage, as the session gets there, is the point —
+ * nobody should be handed the whole list.
+ */
+export function nextQuestions(project, guidesDir = GUIDES) {
+  const findings = readFindings(project);
+  if (!findings) return null;
+  const guide = new Map(checklistFor(project.site.platform, guidesDir).map((q) => [q.id, q]));
+  const open = findings.questions
+    .filter((q) => q.status === 'open')
+    .map((q) => ({ ...q, stage: guide.get(q.id)?.stage ?? null, askUser: guide.get(q.id)?.askUser ?? false }));
+  const stage = open[0]?.stage ?? null;
+  const now = open.filter((q) => q.stage === stage);
+  return { findings, stage, now, later: open.length - now.length, answered: findings.questions.length - open.length };
+}
+
+/** One question in a project's findings file. `When:` is for the reader; status drives the walk-through. */
+const entry = ({ id, question, stage, askUser }) => [
+  `### ${id} — ${question}`,
+  `When: ${stage ?? 'any time'}${askUser ? ' · ask the user' : ''}`,
+  'Status: open',
+  '',
+];
 
 function template(project, checklist) {
   const { site } = project;
@@ -46,13 +89,16 @@ function template(project, checklist) {
     '',
     `These are findings about ${site.platformName} in general: how its admin really behaves,`,
     'which links and buttons do what. They are not about this one site (that goes in SITE.md',
-    'and admin-guide.md). When the checklist is mostly answered, or something surprising',
-    'happens, send this file to whoever maintains the website skill. Their next',
-    `${site.platformName} site then starts from facts instead of guesses.`,
+    'and admin-guide.md).',
+    '',
+    `**Please send this file to ${MAINTAINER}**, who maintains the website skill, once a few`,
+    'questions are answered or something surprising happens. It holds nothing private about',
+    `your site beyond its address. ${MAINTAINER} folds the answers into the skill, so the next`,
+    `${site.platformName} site starts from facts instead of guesses.`,
     '',
     CHECKLIST_HEADING.replace('First-time c', 'C'),
     '',
-    ...checklist.flatMap(({ id, question }) => [`### ${id} — ${question}`, 'Status: open', '']),
+    ...checklist.flatMap(entry),
     OTHER_HEADING,
     '',
     '_None yet._',
@@ -75,7 +121,7 @@ export function ensureFindings(project, guidesDir = GUIDES) {
   const body = readFileSync(file, 'utf8');
   const missing = checklist.filter(({ id }) => !body.includes(`### ${id} — `));
   if (!missing.length) return 0;
-  const block = missing.flatMap(({ id, question }) => [`### ${id} — ${question}`, 'Status: open', '']).join('\n');
+  const block = missing.flatMap(entry).join('\n');
   const at = body.indexOf(OTHER_HEADING);
   writeFileSync(file, at < 0 ? `${body.trimEnd()}\n\n${block}` : `${body.slice(0, at)}${block}\n${body.slice(at)}`);
   return missing.length;

@@ -3,7 +3,8 @@
 The admin steps for WordPress, Shopify, Squarespace and other platforms were written
 from research, without a logged-in test site. Each project folder therefore carries a
 `platform-findings.md`, which the agent fills in as real work reaches each open question.
-This page is for whoever maintains the skill: how to turn those files into a better
+This page is for Kheva, who maintains the skill (the name lives in
+`scripts/core/findings.mjs` as `MAINTAINER`): how to turn those files into a better
 skill.
 
 ## When a findings file arrives

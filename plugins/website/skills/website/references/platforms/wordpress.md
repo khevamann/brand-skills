@@ -99,20 +99,33 @@ Neither is built into this skill yet.
 ## First-time checklist
 
 Questions only a real, logged-in site can answer. Nobody had one to test on, so the
-first project on WordPress answers them. As you reach each one in real work, record what you
-saw with `site finding <ID> "<answer>"`, including how you know: the label you saw, the
-URL that opened, what happened after a click. Record anything else you learn about
-WordPress in general with `site finding new "<text>"`. Never go looking for trouble to
-answer a question: answer it when the work takes you there, and stop at the first
-surprise.
+first project on WordPress answers them, in the order a real session reaches them. Work
+through them with the user as the work goes; never hand over this list. Answer what
+you can see for yourself with `site finding <ID> "<answer>"`, saying how you know: the
+label you saw, the URL that opened, what happened after a click. Questions marked
+_(ask the user)_ need the person: ask each one in plain words, one at a time, when it
+comes up. Record anything else you learn about WordPress in general with
+`site finding new "<text>"`. Never go looking for trouble to answer a question, and stop
+at the first surprise.
 
-- **WP-1** — Which editor opens for a page: the block editor, Elementor, the classic editor, another builder? Does it match the `builder` the scripts detected?
-- **WP-2** — Does `site page` show the right edit link? Does `wp-admin/post.php?post=<id>&action=edit` (or `&action=elementor`) open that page’s editor?
-- **WP-3** — Is there a way to draft changes to a published page — "Rewrite & Republish" (Yoast Duplicate Post), PublishPress Revisions, or nothing? Exact label and where it is.
-- **WP-4** — On a published page, which buttons appear (Update, Save draft, Switch to draft, Publish)? Which one makes changes live?
-- **WP-5** — Block editor: can the browser tool click into a block and type? Is the page canvas inside an iframe?
-- **WP-6** — What happens to pasted text in a paragraph block: is formatting kept, cleaned, or stripped?
-- **WP-7** — Elementor: is text edited in the left panel or on the page, and does the editor load reliably in the app browser?
-- **WP-8** — Are synced patterns and template parts marked in the editor, so they can be told apart from the page’s own content?
-- **WP-9** — Logged in, does `/wp-json/wp/v2/pages/<id>?context=edit` opened in the app browser show the raw block markup?
-- **WP-10** — Logging in: what was the login address, was there 2FA or a WordPress.com sign-in, and how long did the login last?
+### Logging in
+
+- **WP-1** — _(ask the user)_ How did they log in: the login address, 2FA or a WordPress.com sign-in? (Later, note how long the login lasted.)
+
+### Opening a page
+
+- **WP-2** — Does the edit link `site page` shows (`wp-admin/post.php?post=<id>&action=edit`, or `&action=elementor`) open that page’s editor?
+- **WP-3** — Which editor opened: the block editor, Elementor, the classic editor, another builder? Does it match the `builder` the scripts detected?
+- **WP-4** — Logged in, does `/wp-json/wp/v2/pages/<id>?context=edit` opened in the app browser show the raw block markup?
+
+### Making a draft
+
+- **WP-5** — Is there a way to draft changes to a published page — "Rewrite & Republish" (Yoast Duplicate Post), PublishPress Revisions, or nothing? Exact label and where it is.
+- **WP-6** — On a published page, which buttons appear (Update, Save draft, Switch to draft, Publish)? Which one makes changes live?
+
+### Editing
+
+- **WP-7** — Block editor: can the browser tool click into a block and type? Is the page canvas inside an iframe?
+- **WP-8** — What happens to pasted text in a paragraph block: is formatting kept, cleaned, or stripped?
+- **WP-9** — Elementor: is text edited in the left panel or on the page, and does the editor load reliably in the app browser?
+- **WP-10** — Are synced patterns and template parts marked in the editor, so they can be told apart from the page’s own content?

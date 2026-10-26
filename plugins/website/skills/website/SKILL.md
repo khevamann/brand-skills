@@ -147,7 +147,7 @@ answer as a note if it is a standing rule.
 ## Commands
 
 Project, on every site: `$SITE start [url]`, `$SITE detect <url>`, `$SITE init <url>
---platform <p>`, `$SITE note "<text>"`, `$SITE findings`, `$SITE finding <ID|new>
+--platform <p>`, `$SITE note "<text>"`, `$SITE findings [--all]`, `$SITE finding <ID|new>
 "<text>"`, `$SITE help [craft|generic]`.
 
 On every site:
@@ -199,27 +199,37 @@ default, and everything is written into the folder.
 
 Nobody had a logged-in WordPress, Shopify or Squarespace site to test the admin steps
 on, so the guides' admin instructions are researched but unverified. The first person
-to use the skill on a platform is the test, and this skill gets finished from what that
-session records. So, on every project:
+to use the skill on a platform is the test, and Kheva, who maintains the skill, finishes
+it from what that session records.
 
-- **`$SITE start` says how much of the platform's checklist is answered.** `$SITE
-  findings` lists the open questions: which button publishes, whether an admin link
-  works, how pasted text behaves.
-- **Do the work, carefully.** Use the guide as a hypothesis. Do not go looking for
-  trouble to answer questions; answer each one when the real work reaches it. Stop at
-  the first surprise, tell the user what you expected and what you saw, and ask how to
-  go on.
-- **Write down what you saw, as you see it** — not at the end of the session:
-  `$SITE finding SH-3 "Create template is under the template picker at the top of the
-  theme editor; the new template starts as a copy"`. Say how you know: the exact label,
-  the URL that opened, what happened after the click. Anything else you learn about the
-  platform in general goes in `$SITE finding new "<text>"`.
-- **Keep the two kinds of learning apart.** About the platform in general:
-  `platform-findings.md`. About this one site: `SITE.md` notes, `admin-guide.md`,
-  `learnings.md`.
-- **Tell the user at the end** when `platform-findings.md` gained something, and that
-  it should go to whoever maintains the website skill. They fold it into the bundled
-  guide, so the next site on that platform starts from facts.
+Each platform guide has a checklist of what only a real admin can answer, in the order
+a session reaches it: logging in, opening a page, making a draft, editing, saving.
+Each project folder has `platform-findings.md` to record the answers in. Walk the user
+through it as the work goes; never turn it into a survey.
+
+- **`$SITE start` says where the checklist stands.** When the work reaches a new step
+  (logging in, opening the editor, making a draft), run `$SITE findings`. It shows only
+  that step's open questions.
+- **Answer what you can see for yourself** — you are driving the browser — with
+  `$SITE finding <ID> "<what you saw, and how you know>"`. Include the exact label, the
+  URL that opened, or what happened after the click. Do it as you see it, not at the end.
+  Each answer shows the next question.
+- **Ask the user only the questions marked "ask the user"** (their plan, their kind of
+  account, how long the login lasted). Ask one at a time, in plain words, at the moment
+  it matters: "Which Squarespace plan is this site on? It decides whether we can make
+  a draft." Never show them the checklist or its IDs.
+- **Do the work, carefully.** Treat the guide as a best guess. Don't go looking for
+  trouble to answer a question. Stop at the first surprise: tell the user what you
+  expected and what you saw, record it, and ask how to go on.
+- **Anything else you learn about the platform in general** goes in
+  `$SITE finding new "<text>"`. Facts about this one site go in `SITE.md`,
+  `admin-guide.md` and `learnings.md` instead. Never put names, email addresses or
+  anything private in a finding.
+- **Before the session ends, if anything was recorded, ask the user to send
+  `platform-findings.md` to Kheva**, who maintains the website skill. Say it plainly:
+  "This session found out how [platform]'s editor really works. Please send the file
+  platform-findings.md in this folder to Kheva, so the next site doesn't have to work it
+  out again." It holds nothing private about their site beyond its address.
 
 The project's own files are read first in later sessions and override the bundled
 guide. Never edit files inside this skill's directory: they are replaced on every update.

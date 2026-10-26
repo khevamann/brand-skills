@@ -104,20 +104,33 @@ Neither option is built into this skill yet.
 ## First-time checklist
 
 Questions only a real, logged-in store can answer. Nobody had one to test on, so the
-first project on Shopify answers them. As you reach each one in real work, record what you
-saw with `site finding <ID> "<answer>"`, including how you know: the label you saw, the
-URL that opened, what happened after a click. Record anything else you learn about
-Shopify in general with `site finding new "<text>"`. Never go looking for trouble to
-answer a question: answer it when the work takes you there, and stop at the first
-surprise.
+first project on Shopify answers them, in the order a real session reaches them. Work
+through them with the user as the work goes; never hand over this list. Answer what
+you can see for yourself with `site finding <ID> "<answer>"`, saying how you know: the
+label you saw, the URL that opened, what happened after a click. Questions marked
+_(ask the user)_ need the person: ask each one in plain words, one at a time, when it
+comes up. Record anything else you learn about Shopify in general with
+`site finding new "<text>"`. Never go looking for trouble to answer a question, and stop
+at the first surprise.
 
-- **SH-1** — Do the admin links `site page` shows open the right place: `admin.shopify.com/store/<store>/pages/<id>` (and products, blogs, collections), and the theme editor link with `previewPath`?
-- **SH-2** — In the theme editor sidebar, do section names match the section types the scripts report (`image_banner`, `rich_text`…)?
-- **SH-3** — "Create template": where is it, what are its exact labels, and does a new template start as a copy of the one it is based on?
-- **SH-4** — Does `/pages/<handle>?view=<template suffix>` preview a new template that is not assigned to the page yet?
-- **SH-5** — Where is a template assigned to a page or product, and what is the control called?
-- **SH-6** — Duplicating a theme: exact steps and labels, and can its preview link be shared with someone not logged in?
-- **SH-7** — In the theme editor on the live theme, does Save publish immediately? Is any draft, schedule or rollout option visible?
-- **SH-8** — Can block ids be seen in the editor (for example `data-shopify-editor-block` in the preview)?
+### Logging in
+
+- **SH-1** — _(ask the user)_ Which account did they log in with — staff or collaborator — and was there 2FA? (Later, note how long the login lasted.)
+
+### Opening a page
+
+- **SH-2** — Do the admin links `site page` shows open the right place: `admin.shopify.com/store/<store>/pages/<id>` (and products, blogs, collections), and the theme editor link with `previewPath`?
+- **SH-3** — In the theme editor sidebar, do section names match the section types the scripts report (`image_banner`, `rich_text`…)?
+- **SH-4** — Can block ids be seen in the editor (for example `data-shopify-editor-block` in the preview)?
+
+### Making a draft
+
+- **SH-5** — "Create template": where is it, what are its exact labels, and does a new template start as a copy of the one it is based on?
+- **SH-6** — Does `/pages/<handle>?view=<template suffix>` preview a new template that is not assigned to the page yet?
+- **SH-7** — Where is a template assigned to a page or product, and what is the control called?
+- **SH-8** — Duplicating a theme: exact steps and labels, and can its preview link be shared with someone not logged in?
 - **SH-9** — For a page’s own content (Online Store → Pages): is there a Visible/Hidden control, and does a hidden duplicate page work as a draft?
-- **SH-10** — Logging in: staff or collaborator account, 2FA, and how long did the login last?
+
+### Saving
+
+- **SH-10** — In the theme editor on the live theme, does Save publish immediately? Is any draft, schedule or rollout option visible?

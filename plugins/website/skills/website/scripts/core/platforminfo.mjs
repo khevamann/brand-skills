@@ -3,7 +3,7 @@
 //
 // The link patterns are the platforms' standard ones but have not been checked on a
 // real admin yet, so every link is reported with `verified: false`. The first person to
-// open one records whether it worked (platform checklist questions WP-3, SH-1, SQ-8),
+// open one records whether it worked (platform checklist questions WP-2, SH-2, SQ-3),
 // and the pattern gets fixed here if not.
 
 const jsonAfter = (html, marker) => {
