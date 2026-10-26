@@ -1,104 +1,156 @@
-# Castle Keys — Claude skills for our website
+# Brand Skills
 
-A skill that lets Claude search and read the Kirby school website's content (Craft CMS).
-**Read-only.** It cannot change anything in the CMS.
+Claude skills for working on brands and their websites, used in **Claude Cowork** on
+the desktop.
 
-| Plugin | Skill | Use it when |
-|---|---|---|
-| `craft-cms` | [`craft-cms`](plugins/craft-cms/skills/craft-cms) | Looking something up on the website, finding where a piece of copy lives, reading a page's text, or auditing content |
+| Plugin | What it does |
+|---|---|
+| [`website`](plugins/website/skills/website) | Read, audit and redesign a website, and make changes as drafts |
 
-## Start here
+## The `website` skill
 
-```bash
-craft overview --from site-export   # what's here, what you can do, what you can't
-```
+For websites built with **Craft CMS, WordPress, Shopify, Squarespace**, or anything
+else. Tell Claude which site you're working on. It works out
+what the site is built on, or asks you, and keeps everything it learns in your project
+folder.
 
-That counts the site live and states the limits, so it stays true as things change.
+**Read-only.** The scripts never change the website. Changes are made as drafts in the
+site's admin, and a person publishes them.
 
-## What it does
+## How people use it
 
-```bash
-craft sections                            # the content model
-craft entries --search "why kirby" --status all
-craft page 177                            # a page's copy, nesting walked
-craft blocks                              # the block vocabulary
-craft grammar                             # what may be nested where
-craft design-system --out design-system   # live tokens, classes, style guide
-craft export --out site-export            # the whole site to disk
-craft audit --from site-export --links    # placeholders, empty blocks, broken links
-craft brief 177 --out brief.md            # a design brief for one page
-craft diff 177 result.json                # are the proposed edits valid?
-craft scope 177 result.json               # do they stay on one page?
-```
+1. In **Claude Cowork**, create a project for the website (one project per site), attach
+   an empty folder to it, and paste this into the project's **Instructions**:
 
-Pages on this site hold almost no content of their own — the copy sits two levels down
-in nested page-builder blocks. `craft page` walks that and labels every block with its
-type and id, so a change can be described exactly: *block #5665, field `richText_Text`*.
+   > This is a website project. Use the website skill: run its start command before
+   > anything else, then read SITE.md.
+
+2. Say "I'm working on example.com".
+3. Claude detects the platform (or asks, offering WordPress · Shopify · Craft CMS ·
+   Squarespace · Other) and sets up the folder:
+
+   ```
+   SITE.md               what the site is, where things stand, notes from past sessions
+   site.json             facts the scripts use
+   learnings.md          what worked and what broke
+   platform-findings.md  what this project taught us about the platform itself
+   export/  audits/  design/  snapshots/
+   ```
+
+4. Next time, start a new conversation in the same project. Claude reads `SITE.md` and
+   picks up where you left off.
+
+When a change needs the site's admin, Claude works in a browser where you are logged in:
+Claude in Chrome (your own Chrome, with your saved logins) or Claude Desktop's browser.
+You log in yourself; Claude never asks for or stores passwords.
+
+## How the skill finishes itself
+
+The admin steps for WordPress, Shopify and Squarespace were researched, not tested:
+nobody had a logged-in site to try them on. So the first real project on each platform
+is the test. Each platform guide carries a checklist of open questions, such as which
+button publishes or whether an admin link works. Claude works through them step by step
+as the real work reaches them, asking the user only what it can't see for itself, and
+records the answers in `platform-findings.md`.
+
+Claude asks the user to send that file to Kheva, who maintains the skill and folds it
+into the guide ([how](docs/folding-in-findings.md)). The next site on that platform
+then starts from facts.
+
+## What works on each platform
+
+Every platform gets the same flows: export, audit, design system, design brief, diff
+and the scope gate. What differs is how the site is read.
+
+| Platform | Read through |
+|---|---|
+| Craft CMS, public GraphQL on | Craft's API: exact block ids and fields, drafts included |
+| WordPress | Public pages, split by Gutenberg block or Elementor container |
+| Shopify | Public pages, split by theme section; template and section-group sharing understood |
+| Squarespace | Public pages, split by section and block; site styles and section themes from `site.css` |
+| Anything else | Public pages, split by main content; layout repeated across pages detected |
+
+Applying a change happens in the site's admin in the app browser, with a guide per
+platform. Claude learns each site's admin and writes down what it finds. The plan for
+deeper per-platform support is in [`docs/multi-cms-plan.md`](docs/multi-cms-plan.md).
+
+## The three flows
+
+1. **Read and audit.** Export the site, then look for placeholder copy, empty blocks,
+   broken links and repeated copy.
+2. **Prepare a design change.** Extract the live design system, brief Claude Design,
+   then check what comes back with `diff` and `scope`.
+3. **Apply it.** As a draft or preview through the admin. A person publishes.
 
 ### The scope gate
 
-`craft scope` is the safety rail for automated editing. It exits `0` only when every
-proposed edit is confined to one page, and `3` with an explanation when a change reaches
-further — a shared entry referenced by other pages (it names them), copy that appears
-elsewhere, a presentation setting, a design-system change, or an invented block type.
+`site scope` is the safety rail. It exits `0` only when every proposed edit is confined
+to one page. It exits `3`, with an explanation, when a change reaches further:
 
-Nothing beyond a single page should be applied without a human deciding the scope.
+- a shared entry used by other pages, which it names;
+- copy that appears elsewhere;
+- a presentation setting;
+- a design-system change;
+- an invented block type.
 
-## What it cannot do
+Nothing beyond a single page is applied without a person deciding the scope.
 
-Nothing in the CMS changes. There is no command that creates, edits, publishes or
-deletes, and `craft query` rejects any document containing a mutation. Three separate
-reasons, any one of which would be enough:
+## Install (Claude Cowork)
 
-1. **No token is sent.** Write mutations only exist in a private schema with Edit
-   scope, which a token unlocks. The client sends no `Authorization` header at all.
-2. **No write command exists.** `craft --help` is the complete surface.
-3. **[`guard.mjs`](plugins/craft-cms/skills/craft-cms/scripts/lib/guard.mjs) refuses
-   them**, which holds even if the public schema is granted Edit scope later.
+1. In Claude Desktop, open **Customize → Plugins → Add → Add marketplace** and enter
+   `khevamann/brand-skills`.
+2. Find **website** under **Discover** and install it.
+3. Turn on **Sync automatically** for the marketplace, or use **Check for updates**
+   from time to time.
 
-`craft mutations` prints the live position. 12 tests pin this, run offline.
+There is nothing to configure: the first conversation in a project sets it up.
 
-Content changes happen in the Craft control panel.
+**Before handing it out, check two things:**
 
-## Install — Claude Code
+- **Internet access for the scripts.** Cowork runs scripts in a sandbox whose internet
+  access is limited to approved sites. On a Team or Enterprise plan, an organization
+  Owner allows it under **Organization settings → Capabilities → Code execution**: turn
+  on network egress and add the website's domain, or allow all domains. If the scripts
+  can't reach a site, the skill says so and falls back to reading in the browser.
+- **Node.js.** The scripts need Node 18 or newer inside that sandbox. The docs don't say
+  whether it is always there. The skill checks first, and tries to install it if it is
+  missing.
 
-Uses your local git credentials, so this repo being private is not a problem:
+In Claude Code, the same marketplace works with `/plugin marketplace add
+khevamann/brand-skills` and `/plugin install website@brand-skills`. claude.ai chat
+can't reach websites from its sandbox, so it isn't supported.
 
-```
-/plugin marketplace add khevamann/castle-keys
-/plugin install craft-cms@castle-keys
-```
+## Read-only, three ways
 
-Update later with `/plugin marketplace update castle-keys`.
+On Craft, nothing can be written:
 
-**There is nothing to configure.** The endpoint is hard-coded in
-[`scripts/lib/client.mjs`](plugins/craft-cms/skills/craft-cms/scripts/lib/client.mjs);
-change that one line to point at another environment.
-
-Requires Node 18+. No npm dependencies.
-
-### A note on claude.ai and Cowork
-
-Claude Code only. The skill needs network access to the CMS, which the claude.ai code
-sandbox does not have.
-
-## Two things worth knowing about the site
-
-- **The public GraphQL schema is readable with no token** — all 208 entries.
-- **Disabled entries and in-progress drafts are included.** `status: null` and
-  `drafts: true` work unauthenticated. Harmless on a test site; worth checking before
-  assuming production keeps unpublished content private.
+1. **No token is sent.** Write mutations only exist in a private schema, which a token
+   unlocks. The client sends no `Authorization` header at all.
+2. **No write command exists.** `site --help` is the complete surface.
+3. **[`guard.mjs`](plugins/website/skills/website/scripts/adapters/craft/guard.mjs)
+   refuses them**, even if the public schema is granted Edit scope later.
 
 ## Working on this repo
 
-```bash
-node --test plugins/craft-cms/skills/craft-cms/scripts/test/
+```
+plugins/website/skills/website/
+  SKILL.md                     router: resume → identify → platform guide → flows
+  references/                  project folder, design hand-off, one guide per platform
+  scripts/site.mjs             the one CLI
+  scripts/core/                detection, project folder, audit, scope, design tokens
+  scripts/adapters/craft/      Craft GraphQL: client, guard, page walking, commands
 ```
 
-Those tests are the read-only contract. They run offline, which is what proves refusals
-happen before any network call. If you ever widen what the tool can do, the diff must
-touch `guard.mjs` and its tests together.
+```bash
+node --test 'plugins/website/skills/website/scripts/test/*.test.mjs'
+```
 
-The draft-writing version of this skill — `createDraft` plus draft-scoped saves, with
-publishing and deletion blocked — is in git history at `a1b022a`. It needs a token with
-Edit scope on the sections you want; nothing here does.
+The tests run offline. They pin:
+
+- the read-only contract;
+- the project folder's behaviour;
+- detection scoring;
+- that the docs match the CLI.
+
+If you ever widen what the tool can do, the diff must touch the guard and its tests
+together.

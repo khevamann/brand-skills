@@ -8,7 +8,7 @@
     ],
     "allow": [
       "Bash(node --test:*)",
-      "Bash(node *scripts/craft.mjs:*)"
+      "Bash(node *scripts/site.mjs:*)"
     ]
   }
 }
