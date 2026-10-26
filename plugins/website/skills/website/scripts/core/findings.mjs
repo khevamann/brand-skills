@@ -15,6 +15,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SiteError, today } from './cli.mjs';
+import { recordState } from './project.mjs';
 
 const GUIDES = fileURLToPath(new URL('../../references/platforms/', import.meta.url));
 
@@ -91,10 +92,10 @@ function template(project, checklist) {
     'which links and buttons do what. They are not about this one site (that goes in SITE.md',
     'and admin-guide.md).',
     '',
-    `**Please send this file to ${MAINTAINER}**, who maintains the website skill, once a few`,
-    'questions are answered or something surprising happens. It holds nothing private about',
-    `your site beyond its address. ${MAINTAINER} folds the answers into the skill, so the next`,
-    `${site.platformName} site starts from facts instead of guesses.`,
+    `Once enough is here, Claude will suggest sending this file to ${MAINTAINER}, who maintains`,
+    `the website skill. ${MAINTAINER} folds the answers into the skill, so the next`,
+    `${site.platformName} site starts from facts instead of guesses. It holds nothing private`,
+    'about your site beyond its address.',
     '',
     CHECKLIST_HEADING.replace('First-time c', 'C'),
     '',
@@ -181,4 +182,35 @@ export function recordFinding(project, id, text) {
   const chunk = body.slice(start, end).replace(/Status: open/, 'Status: answered').trimEnd();
   writeFileSync(file, `${body.slice(0, start)}${chunk}\n${line}\n${body.slice(end).replace(/^\n?/, '\n')}`);
   return line;
+}
+
+// ------------------------------------------------------------ sending back
+
+/** How many new findings make another reminder worth it. */
+const MORE_BEFORE_ASKING_AGAIN = 5;
+
+/**
+ * Whether now is the moment to suggest sending the findings to the maintainer. Once
+ * enough has built up over a few sessions — half the checklist (at least five
+ * findings), or all of it — and then again only after real progress. Never a nag.
+ */
+export function sendSuggestion(project) {
+  const findings = readFindings(project);
+  if (!findings) return { due: false };
+  const total = findings.questions.length;
+  const answered = findings.questions.filter((q) => q.status !== 'open').length;
+  const count = answered + findings.other.length;
+  const complete = total > 0 && answered === total;
+  const last = project.site.state?.findingsSuggested;
+
+  let due;
+  if (!last) due = complete || count >= Math.max(MORE_BEFORE_ASKING_AGAIN, Math.ceil(total / 2));
+  else due = count >= last.count + MORE_BEFORE_ASKING_AGAIN || (complete && !last.complete);
+  return { due, count, answered, total, complete, file: findings.file };
+}
+
+/** Remember that the user has been told, so it is not mentioned again for a while. */
+export function markSuggested(project) {
+  const { count, complete } = sendSuggestion(project);
+  recordState(project, 'findingsSuggested', { count: count ?? 0, complete: Boolean(complete) });
 }

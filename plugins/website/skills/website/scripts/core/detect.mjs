@@ -7,10 +7,10 @@
 //
 // Signals are our own, not copied from Wappalyzer's GPL rule set.
 
-import { SiteError } from './cli.mjs';
+import { SiteError, NETWORK_HINT } from './cli.mjs';
 import { decodeEntities, cleanText } from './html.mjs';
 
-const UA = 'Mozilla/5.0 (compatible; website-skill/0.2; +https://github.com/khevamann/castle-keys)';
+const UA = 'Mozilla/5.0 (compatible; website-skill/0.2; +https://github.com/khevamann/brand-skills)';
 
 /** The four platforms with dedicated support, plus the "other" fallback. */
 export const SUPPORTED = ['craft', 'wordpress', 'shopify', 'squarespace'];
@@ -136,7 +136,7 @@ export async function fetchPage(url, { timeout = 15000 } = {}) {
   try {
     res = await fetch(url, { headers: { 'User-Agent': UA }, redirect: 'follow', signal: AbortSignal.timeout(timeout) });
   } catch (err) {
-    throw new SiteError(`Could not reach ${url}\n${err.cause?.message ?? err.message}`);
+    throw new SiteError(`Could not reach ${url}\n${err.cause?.message ?? err.message}\n\n${NETWORK_HINT}`);
   }
   const headers = {};
   res.headers.forEach((value, key) => (headers[key.toLowerCase()] = value));

@@ -328,7 +328,7 @@ async function cmdExport(flags) {
 
 const NOTHING_FOUND =
   'No pages found: no sitemap, and no links could be followed from the homepage. ' +
-  'Try `site page <url>` for individual pages, or read the site in the app browser.';
+  'Try `site page <url>` for individual pages, or read the site in the browser.';
 
 /** Blocks that appear on more than one page, most widespread first. */
 function sharedSummary(corpus) {

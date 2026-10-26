@@ -2,7 +2,7 @@
 
 > **Reading is scripted; applying is not.** `site export`, `audit`, `page`, `blocks`,
 > `design-system`, `brief`, `diff` and `scope` read the public Shopify store from the
-> outside. Drafts and anything behind a login are done in the app browser using this
+> outside. Drafts and anything behind a login are done in the browser using this
 > guide. The admin steps were researched 2026-10-25 and are unverified on a real
 > store: treat each one as a hypothesis, and record what actually happens in the
 > project's `admin-guide.md` and `learnings.md`.

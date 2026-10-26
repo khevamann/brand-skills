@@ -5,7 +5,7 @@ HubSpot, a custom build, or anything unrecognised. Detection names the platform 
 can. Record that name in `SITE.md`, and check the platform's own help pages for how
 drafts work before touching anything.
 
-Reading is scripted, from the outside; applying happens in the app browser.
+Reading is scripted, from the outside; applying happens in the browser.
 
 ## Reading from the outside (no login needed)
 
@@ -27,7 +27,7 @@ The scripts do all of this:
    and its stylesheets, plus the colours, fonts and sizes used most.
 
 If a page comes out badly split (for example, a site drawn entirely by JavaScript has
-little in its HTML), read it in the app browser instead and note that in `SITE.md`.
+little in its HTML), read it in the browser instead and note that in `SITE.md`.
 
 The site is read even if its `robots.txt` asks automated tools to stay away, which
 staging sites usually do: it is the user's own site, read at their request.
@@ -36,7 +36,8 @@ staging sites usually do: it is the user's own site, read at their request.
 
 The first time you need the admin:
 
-1. Ask the user to log in to the admin in the **Claude Desktop app browser**. Never ask
+1. Ask the user to log in to the admin in the browser you are using (Claude in Chrome, or
+   Claude Desktop's browser). Never ask
    for or type their password or 2FA code.
 2. Explore carefully, without saving anything. Find:
    - how to reach a page's editor (URL pattern, or the clicks);

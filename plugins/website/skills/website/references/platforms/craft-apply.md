@@ -6,7 +6,7 @@
 > including exact labels and anything that broke. Until then, treat it as a hypothesis.
 
 This is the route when no API token is available. The skill works out *what* to change;
-the Claude Desktop app browser, with the user logged in, or a person makes the change in
+a browser where the user is logged in (Claude in Chrome, or Claude Desktop's browser), or a person makes the change in
 Craft. The user logs in themselves; never ask for or type a password or 2FA code.
 
 **Check the project's `admin-guide.md` first.** Once someone has driven this site's

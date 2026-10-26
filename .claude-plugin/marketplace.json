@@ -1,18 +1,18 @@
 {
-  "name": "castle-keys",
+  "name": "brand-skills",
   "owner": {
     "name": "khevamann"
   },
   "metadata": {
-    "description": "Claude skills for working on websites, read-only",
-    "version": "0.2.0"
+    "description": "Claude skills for working on brands and their websites",
+    "version": "0.3.0"
   },
   "plugins": [
     {
       "name": "website",
       "source": "./plugins/website",
       "description": "Work on a website built with Craft CMS, WordPress, Shopify, Squarespace or anything else. Read-only: it never creates, edits, publishes or deletes anything on the site.",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "category": "content",
       "keywords": [
         "website",

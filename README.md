@@ -1,7 +1,16 @@
-# Castle Keys — a Claude skill for working on websites
+# Brand Skills
 
-One skill, `website`, for websites built with **Craft CMS, WordPress, Shopify,
-Squarespace**, or anything else. Tell Claude which site you're working on. It works out
+Claude skills for working on brands and their websites, used in **Claude Cowork** on
+the desktop.
+
+| Plugin | What it does |
+|---|---|
+| [`website`](plugins/website/skills/website) | Read, audit and redesign a website, and make changes as drafts |
+
+## The `website` skill
+
+For websites built with **Craft CMS, WordPress, Shopify, Squarespace**, or anything
+else. Tell Claude which site you're working on. It works out
 what the site is built on, or asks you, and keeps everything it learns in your project
 folder.
 
@@ -10,7 +19,12 @@ site's admin, and a person publishes them.
 
 ## How people use it
 
-1. In **Claude Desktop**, open a folder for the website (one folder per site).
+1. In **Claude Cowork**, create a project for the website (one project per site), attach
+   an empty folder to it, and paste this into the project's **Instructions**:
+
+   > This is a website project. Use the website skill: run its start command before
+   > anything else, then read SITE.md.
+
 2. Say "I'm working on example.com".
 3. Claude detects the platform (or asks, offering WordPress · Shopify · Craft CMS ·
    Squarespace · Other) and sets up the folder:
@@ -23,11 +37,12 @@ site's admin, and a person publishes them.
    export/  audits/  design/  snapshots/
    ```
 
-4. Next time, open the same folder and start a new conversation. Claude reads `SITE.md`
-   and picks up where you left off.
+4. Next time, start a new conversation in the same project. Claude reads `SITE.md` and
+   picks up where you left off.
 
-When a change needs the site's admin, you log in yourself in the Claude Desktop app
-browser. Claude never asks for or stores passwords.
+When a change needs the site's admin, Claude works in a browser where you are logged in:
+Claude in Chrome (your own Chrome, with your saved logins) or Claude Desktop's browser.
+You log in yourself; Claude never asks for or stores passwords.
 
 ## How the skill finishes itself
 
@@ -80,19 +95,30 @@ to one page. It exits `3`, with an explanation, when a change reaches further:
 
 Nothing beyond a single page is applied without a person deciding the scope.
 
-## Install
+## Install (Claude Cowork)
 
-```
-/plugin marketplace add khevamann/castle-keys
-/plugin install website@castle-keys
-```
+1. In Claude Desktop, open **Customize → Plugins → Add → Add marketplace** and enter
+   `khevamann/brand-skills`.
+2. Find **website** under **Discover** and install it.
+3. Turn on **Sync automatically** for the marketplace, or use **Check for updates**
+   from time to time.
 
-Update later with `/plugin marketplace update castle-keys`.
+There is nothing to configure: the first conversation in a project sets it up.
 
-There is nothing to configure: the first conversation in a site's folder sets it up.
+**Before handing it out, check two things:**
 
-Requires Node.js 18+ on the user's computer (Claude Desktop doesn't include it; the skill walks people through installing it from nodejs.org). No npm dependencies. Works in Claude Desktop and Claude Code.
-claude.ai chat can't reach the website from its sandbox, so it isn't supported.
+- **Internet access for the scripts.** Cowork runs scripts in a sandbox whose internet
+  access is limited to approved sites. On a Team or Enterprise plan, an organization
+  Owner allows it under **Organization settings → Capabilities → Code execution**: turn
+  on network egress and add the website's domain, or allow all domains. If the scripts
+  can't reach a site, the skill says so and falls back to reading in the browser.
+- **Node.js.** The scripts need Node 18 or newer inside that sandbox. The docs don't say
+  whether it is always there. The skill checks first, and tries to install it if it is
+  missing.
+
+In Claude Code, the same marketplace works with `/plugin marketplace add
+khevamann/brand-skills` and `/plugin install website@brand-skills`. claude.ai chat
+can't reach websites from its sandbox, so it isn't supported.
 
 ## Read-only, three ways
 

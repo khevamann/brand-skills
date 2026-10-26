@@ -6,7 +6,8 @@ import { mkdtempSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { initProject, PLATFORMS } from '../core/project.mjs';
-import { checklistFor, ensureFindings, readFindings, recordFinding, findingsPath, nextQuestions, MAINTAINER } from '../core/findings.mjs';
+import { checklistFor, ensureFindings, readFindings, recordFinding, findingsPath, nextQuestions, sendSuggestion, markSuggested, MAINTAINER } from '../core/findings.mjs';
+import { loadProject } from '../core/project.mjs';
 
 const project = (platform = 'wordpress') =>
   initProject(mkdtempSync(join(tmpdir(), 'site-findings-')), { url: 'https://x.example', platform, confirmedBy: 'user' });
@@ -53,7 +54,29 @@ test('the walk-through offers one step at a time, and moves on as questions are 
 
 test('the findings file says who to send it to', () => {
   assert.equal(MAINTAINER, 'Kheva');
-  assert.match(readFileSync(findingsPath(project()), 'utf8'), /Please send this file to Kheva\*\*, who maintains the website skill/);
+  assert.match(readFileSync(findingsPath(project()), 'utf8'), /suggest sending this file to Kheva, who maintains/);
+});
+
+test('sending the findings is suggested rarely: once enough builds up, then only after more', () => {
+  let p = project('shopify'); // 10 questions
+  const reload = () => (p = loadProject(p.paths.root));
+  for (const id of ['SH-1', 'SH-2', 'SH-3', 'SH-4']) recordFinding(p, id, 'seen');
+  assert.equal(sendSuggestion(p).due, false, 'four findings are not enough');
+  recordFinding(p, 'SH-5', 'seen');
+  assert.equal(sendSuggestion(p).due, true, 'half the checklist is');
+
+  markSuggested(p);
+  reload();
+  assert.equal(sendSuggestion(p).due, false, 'not again straight away');
+  for (const id of ['SH-6', 'SH-7', 'SH-8', 'SH-9']) recordFinding(p, id, 'seen');
+  assert.equal(sendSuggestion(p).due, false, 'four more is not enough');
+  recordFinding(p, 'SH-10', 'seen');
+  assert.equal(sendSuggestion(p).due, true, 'five more, and the checklist complete');
+
+  markSuggested(p);
+  reload();
+  recordFinding(p, 'new', 'one more thing');
+  assert.equal(sendSuggestion(p).due, false, 'a single extra finding does not ask again');
 });
 
 test('a new project gets the platform checklist, all open', () => {

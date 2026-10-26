@@ -17,7 +17,7 @@ import {
   PLATFORMS, loadProject, initProject, addNote, readNotes, projectPaths, writeClaudeMdBlock,
   CLAUDE_MD_START,
 } from './core/project.mjs';
-import { ensureFindings, readFindings, recordFinding, nextQuestions, findingsPath, MAINTAINER } from './core/findings.mjs';
+import { ensureFindings, readFindings, recordFinding, nextQuestions, sendSuggestion, markSuggested, MAINTAINER } from './core/findings.mjs';
 import * as craft from './adapters/craft/cli.mjs';
 import * as generic from './adapters/generic/cli.mjs';
 
@@ -41,6 +41,7 @@ PROJECT
       --graphql <url>                Craft only: the GraphQL endpoint, if detection missed it
   site note "<text>"                 Add a dated note to SITE.md for future sessions
   site findings [--all]              The platform checklist: the questions to answer now
+      --told                         Record that the user was asked to send the findings
   site finding <ID|new> "<text>"     Record what a real admin showed (platform-findings.md)
 
 PLATFORM COMMANDS
@@ -60,7 +61,7 @@ function platformStatus(site) {
       adapter: 'craft',
       summary:
         "Full support over Craft's API: export, audit, design system, briefs, diff and the scope gate. " +
-        'Applying a change happens in the Craft control panel, in the app browser, as a draft.',
+        'Applying a change happens in the Craft control panel, in the browser, as a draft.',
       guide,
     };
   }
@@ -74,7 +75,7 @@ function platformStatus(site) {
     summary:
       why +
       'export, audit, design system, briefs, diff and the scope gate all work on public pages. ' +
-      'Drafts and anything behind a login need the app browser, following the guide; record what ' +
+      'Drafts and anything behind a login need the browser, following the guide; record what ' +
       'works in admin-guide.md and learnings.md.',
     guide,
   };
@@ -177,6 +178,10 @@ async function cmdInit(url, flags) {
         ? ['', 'No public Craft GraphQL endpoint was found. If the user knows one, re-run init with --graphql.']
         : []),
       '',
+      'If this is a Cowork project without Instructions yet, suggest these to the user once, so new',
+      'conversations resume it: "This is a website project. Use the website skill: run its start',
+      'command before anything else, then read SITE.md."',
+      '',
       'NEXT: fill in "What we can do here" in SITE.md, then carry on with what the user asked for.',
     ].join('\n'),
   );
@@ -235,8 +240,11 @@ function cmdStart(url) {
       ? [
           `Platform checklist: ${next.answered} of ${next.findings.questions.length} answered` +
             (next.now.length ? ` — next at "${next.stage}"; run site findings when the work gets there` : ' — complete'),
-          ...(next.answered || next.findings.other.length
-            ? [`  This project has findings: remind the user to send platform-findings.md to ${MAINTAINER}.`]
+          ...(sendSuggestion(project).due
+            ? [
+                `  Enough has built up to be worth sending to ${MAINTAINER}. Mention it once this session, at a`,
+                '  natural pause (see SKILL.md), then run: site findings --told',
+              ]
             : []),
         ]
       : []),
@@ -253,6 +261,10 @@ function cmdFindings(flags) {
   const project = loadProject('.');
   if (!project) throw new SiteError('No project in this folder. Run `site start <url>` first.');
   ensureFindings(project);
+  if (flags.told) {
+    markSuggested(project);
+    return out(`Noted. ${MAINTAINER} won't be mentioned again until more findings have built up.`);
+  }
   const next = nextQuestions(project);
   if (!next) return out(`${project.site.platformName} has no first-time checklist.`);
   const { findings } = next;
@@ -276,11 +288,7 @@ function cmdFindings(flags) {
     '  - Answer what you can see yourself: site finding <ID> "<what you saw, and how you know>".',
     '  - Ask the user only the [ask the user] ones, in plain words, one at a time.',
     '  - Stop at the first surprise: tell the user what you expected and what you saw.',
-    '',
-    findings.questions.some((q) => q.status !== 'open') || findings.other.length
-      ? `This project has findings. Before the session ends, ask the user to send ${findingsPath(project)}\n` +
-          `to ${MAINTAINER}, who maintains the website skill.`
-      : `Once anything is recorded, ask the user to send platform-findings.md to ${MAINTAINER}.`,
+    `  - Don't mention sending this to ${MAINTAINER}; \`site start\` says when it is worth it.`,
   );
   out(lines.join('\n'));
 }
@@ -297,7 +305,6 @@ function cmdFinding(positional) {
     next?.now.length
       ? `Next, when the work reaches "${next.stage}": ${next.now[0].id} — ${next.now[0].askUser ? '[ask the user] ' : ''}${next.now[0].question}`
       : 'Every checklist question is answered.',
-    `Before the session ends, ask the user to send platform-findings.md to ${MAINTAINER}.`,
   ].join('\n'));
 }
 

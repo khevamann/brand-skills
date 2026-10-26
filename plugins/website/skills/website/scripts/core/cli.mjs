@@ -48,5 +48,14 @@ export function exitWith(err) {
   process.exit(1);
 }
 
+/**
+ * Said whenever the site can't be reached. In Claude Cowork the scripts run in a
+ * sandbox whose internet access is limited to approved sites, which is the usual cause.
+ */
+export const NETWORK_HINT =
+  'If this is Claude Cowork, its sandbox is probably not allowed onto this site yet. An Owner of ' +
+  'the Claude organization can allow it: Organization settings → Capabilities → Code execution, ' +
+  "network access, add the site's domain. Until then, read pages in the browser.";
+
 /** Today as YYYY-MM-DD, for dated notes and file names. */
 export const today = () => new Date().toISOString().slice(0, 10);

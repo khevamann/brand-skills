@@ -7,10 +7,10 @@
 // robots.txt's Disallow rules are not applied: the only site read is the project's
 // own, at its owner's request, and staging sites routinely disallow everything.
 
-import { SiteError } from './cli.mjs';
+import { SiteError, NETWORK_HINT } from './cli.mjs';
 import { parse, findAll } from './html.mjs';
 
-export const UA = 'Mozilla/5.0 (compatible; website-skill/0.3; +https://github.com/khevamann/castle-keys)';
+export const UA = 'Mozilla/5.0 (compatible; website-skill/0.3; +https://github.com/khevamann/brand-skills)';
 
 const NOT_A_PAGE = /\.(pdf|jpe?g|png|gif|webp|avif|svg|ico|css|js|json|xml|txt|zip|mp4|mp3|mov|docx?|xlsx?|pptx?|md|rss|atom)(\?|$)/i;
 
@@ -190,7 +190,10 @@ export async function fetchPages(urls, { delayMs = 400, onPage = () => {} } = {}
 }
 
 export function assertHtml(res) {
-  if (!res.ok) throw new SiteError(`Could not fetch ${res.url}: ${res.error ?? `HTTP ${res.status}`}`);
+  if (!res.ok) {
+    const blocked = !res.status || res.status === 403 || res.status === 407;
+    throw new SiteError(`Could not fetch ${res.url}: ${res.error ?? `HTTP ${res.status}`}${blocked ? `\n\n${NETWORK_HINT}` : ''}`);
+  }
   if (!/html/i.test(res.type) && !/<html/i.test(res.text.slice(0, 1000))) {
     throw new SiteError(`${res.url} is not an HTML page (${res.type || 'unknown type'}).`);
   }

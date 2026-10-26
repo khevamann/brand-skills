@@ -30,7 +30,7 @@ Written for a person as much as for Claude. Four sections:
   ("Squarespace Core plan — no page drafts", "Shopify, Horizon theme, 14 of 20 theme
   slots used").
 - **What we can do here** — plainly: which flows work, and which need someone logged in
-  to the admin in the app browser.
+  to the admin in the browser.
 - **Current state** — where things stand: last export and audit with their headline
   numbers, any design change in progress and which step it is on, anything waiting on
   the user. Rewrite this section rather than appending to it.
@@ -80,8 +80,9 @@ logged-in admin can answer. Answer them with `site finding <ID> "<what you saw>"
 work reaches them, and add anything else about the platform with `site finding new`.
 Questions come in the order a session reaches them, and `site findings` shows only the
 current step's. This file is about the platform in general (WordPress, Shopify…), not
-this site. The user sends it to Kheva, who maintains the skill and folds it into the
-bundled guide. That is how the skill learns from its first real use on each platform.
+this site. Once enough has built up over a few sessions, Claude suggests, once, sending
+it to Kheva, who maintains the skill and folds it into the bundled guide. That is how the
+skill learns from its first real use on each platform.
 
 ## site.json
 
@@ -94,7 +95,9 @@ Machine-readable, maintained by the scripts. Hand-editable fields:
 
 ## CLAUDE.md
 
-Claude Desktop reads `CLAUDE.md` automatically when a session starts in the folder. The
-skill keeps a short block in it, between `<!-- website-skill:start -->` and
-`<!-- website-skill:end -->`, telling the new session to read `SITE.md` first. Anything
-outside the markers belongs to the user and is never touched.
+Cowork does not promise to read `CLAUDE.md`, so the user's Cowork project carries the
+real pointer in its Instructions ("This is a website project. Use the website skill: run
+its start command before anything else, then read SITE.md."). The skill still keeps a
+short block in `CLAUDE.md`, between `<!-- website-skill:start -->` and
+`<!-- website-skill:end -->`, for tools that do read it (Claude Code). Anything outside
+the markers belongs to the user and is never touched.

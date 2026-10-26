@@ -2,7 +2,7 @@
 
 > **Reading is scripted; applying is not.** `site export`, `audit`, `page`, `blocks`,
 > `design-system`, `brief`, `diff` and `scope` read the public WordPress site from the
-> outside. Drafts and anything behind a login are done in the app browser using this
+> outside. Drafts and anything behind a login are done in the browser using this
 > guide. The admin steps were researched 2026-10-25 and are unverified on a real
 > site: treat each one as a hypothesis, and record what actually happens in the
 > project's `admin-guide.md` and `learnings.md`.
@@ -42,7 +42,7 @@ pages count as site layout. What they rely on, for when something looks wrong:
 
 ## Reading (logged in)
 
-With the user logged in to the admin in the app browser, the same REST API returns
+With the user logged in to the admin in the browser, the same REST API returns
 much more when called from that browser tab with `?context=edit`: the raw block markup,
 synced patterns, template parts and global styles **(unverified)**.
 
@@ -116,7 +116,7 @@ at the first surprise.
 
 - **WP-2** — Does the edit link `site page` shows (`wp-admin/post.php?post=<id>&action=edit`, or `&action=elementor`) open that page’s editor?
 - **WP-3** — Which editor opened: the block editor, Elementor, the classic editor, another builder? Does it match the `builder` the scripts detected?
-- **WP-4** — Logged in, does `/wp-json/wp/v2/pages/<id>?context=edit` opened in the app browser show the raw block markup?
+- **WP-4** — Logged in, does `/wp-json/wp/v2/pages/<id>?context=edit` opened in the browser show the raw block markup?
 
 ### Making a draft
 
@@ -127,5 +127,5 @@ at the first surprise.
 
 - **WP-7** — Block editor: can the browser tool click into a block and type? Is the page canvas inside an iframe?
 - **WP-8** — What happens to pasted text in a paragraph block: is formatting kept, cleaned, or stripped?
-- **WP-9** — Elementor: is text edited in the left panel or on the page, and does the editor load reliably in the app browser?
+- **WP-9** — Elementor: is text edited in the left panel or on the page, and does the editor load reliably in the browser?
 - **WP-10** — Are synced patterns and template parts marked in the editor, so they can be told apart from the page’s own content?

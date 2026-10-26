@@ -1,7 +1,7 @@
 // Transport. No credentials: this adapter only works against a public GraphQL
 // schema that is readable anonymously, so requests carry no Authorization header.
 
-import { SiteError } from '../../core/cli.mjs';
+import { SiteError, NETWORK_HINT } from '../../core/cli.mjs';
 
 export class CraftError extends SiteError {}
 
@@ -42,7 +42,7 @@ export async function graphql(query, variables = {}) {
       body: JSON.stringify({ query, variables }),
     });
   } catch (cause) {
-    throw new CraftError(`Could not reach ${ENDPOINT}\n${cause.message}`);
+    throw new CraftError(`Could not reach ${ENDPOINT}\n${cause.message}\n\n${NETWORK_HINT}`);
   }
 
   const text = await res.text();

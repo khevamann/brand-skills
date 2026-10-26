@@ -94,7 +94,7 @@ affected and which, then ask: this page only, all of them, or neither.
 
 The skill is read-only, so applying is a separate step:
 
-- **The Claude Desktop app browser driving the admin**, with the user logged in. No
+- **A browser driving the admin** (Claude in Chrome, or Claude Desktop's browser), with the user logged in. No
   token needed. Slow and brittle — rich-text editors, nested block drawers, drag
   handles. Record what breaks in the project's `learnings.md` and `admin-guide.md` so
   the next run is faster.

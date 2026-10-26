@@ -79,7 +79,8 @@ test('SKILL.md walks the user through findings and names who they go to', () => 
   assert.match(skill, /\$SITE findings/);
   assert.match(skill, /one at a time/);
   assert.match(skill, /never turn it into a survey|Never show them the checklist/);
-  assert.match(skill, /send\s+`platform-findings\.md` to Kheva/);
+  assert.match(skill, /sends the findings to Kheva happens rarely, never per session/);
+  assert.match(skill, /\$SITE findings --told/);
 });
 
 test('every reference file SKILL.md names exists', () => {

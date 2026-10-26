@@ -414,14 +414,21 @@ It holds only code and the bundled per-platform guides.
 | **2: connected** | approve one connector/CLI login | faster, deterministic reads and draft writes. WP.com connector or Application Password; Shopify CLI + connector; nothing for Squarespace |
 
 Tier 2 ships as **separate optional plugins** that depend on the core, so that their
-MCP servers load only when installed. For example: `castle-keys-shopify`,
-`castle-keys-wordpress`.
+MCP servers load only when installed. For example: `brand-skills-shopify`,
+`brand-skills-wordpress`.
 
 The read-only contract holds at every tier. **Nothing is ever published.** Every apply
 path ends at a draft, preview or unassigned template, and the human makes the change
 live.
 
 ## 7. Where users run this: Claude Desktop and its built-in browser
+
+> **Update 2026-10-26: the target is Claude Cowork on the desktop**, not the Code tab.
+> In Cowork, scripts run in a sandbox whose internet access is allow-listed: an
+> organization Owner must allow the site's domain. Node's presence there is
+> undocumented, and `CLAUDE.md` isn't promised to be read, so projects resume through
+> Cowork project Instructions. The browser for logged-in work is Claude in Chrome, or
+> Claude Desktop's browser if an admin enabled it. The text below predates this.
 
 - **The target:** Claude Desktop, with a project folder open, using the app's
   **built-in browser** for anything that needs a login.
@@ -463,8 +470,8 @@ plugins/website/
                              brief, diff, scope, …  (dispatches to the adapter)
       core/                  cli, detect, project, audit, fields, designsystem, scope
       adapters/craft/        (wordpress/ shopify/ squarespace/ generic/ to come)
-plugins/castle-keys-shopify/             optional Tier 2: .mcp.json + guide
-plugins/castle-keys-wordpress/           optional Tier 2
+plugins/brand-skills-shopify/             optional Tier 2: .mcp.json + guide
+plugins/brand-skills-wordpress/           optional Tier 2
 ```
 
 - Keep the description under 1,024 characters, with the trigger words first: website,

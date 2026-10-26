@@ -8,10 +8,11 @@ description: Use for any work on a website the user looks after — Craft CMS, W
 The people using this know their own website but are not developers. Speak plainly,
 ask when unsure, and never assume they can run a terminal command themselves.
 
-All scripted access goes through one command, run **from the project folder**:
+All scripted access goes through one command, run **from the project folder** (the
+folder attached to the user's Cowork project):
 
 ```bash
-SITE="node <skill-dir>/scripts/site.mjs"   # <skill-dir> is this skill's base directory
+SITE="node ${CLAUDE_SKILL_DIR}/scripts/site.mjs"
 $SITE start                                # first, every session
 ```
 
@@ -20,16 +21,27 @@ $SITE start                                # first, every session
 **One folder = one website project.** It holds everything produced and everything
 learned, so a new session in the same folder carries on where the last one stopped.
 
-**The scripts need Node.js 18 or newer**, which Claude Desktop does not include. If
-`$SITE start` fails with "node: command not found" (or `node -v` shows a version below
-18), stop and help the user install it, in plain words:
+**If the scripts can't run.** They need Node.js 18 or newer where your commands run (in
+Cowork, its sandbox).
 
-1. "These tools need a free program called Node.js. Open nodejs.org, download the
-   version marked LTS, and run the installer with the default options."
-2. "When it has finished, quit Claude completely and open it again, then come back to
-   this folder."
+- **"node: command not found", or a version below 18:** install it yourself if you can,
+  using the sandbox's package manager or the official Node.js download. Don't ask the
+  user to install anything on their computer; it wouldn't reach the sandbox.
+- **Node can't be installed:** tell the user plainly that the scripts can't run here
+  yet, carry on by reading the site in the browser, and record it with
+  `$SITE finding new` once a project exists. Otherwise put it in your reply.
 
-Then carry on. Note in `SITE.md` that Node was installed, so nobody asks again.
+**If the scripts can't reach the website** ("Could not reach", a timeout, or a refusal
+from the network), Cowork's sandbox is probably not allowed onto that site. Tell the
+user in plain words that an Owner of their Claude organization needs to allow it:
+**Organization settings → Capabilities → Code execution**, turn on network access, and
+add the site's domain. Meanwhile, read pages through the browser or your web-fetch tool,
+and note the problem in `SITE.md`.
+
+**Resuming a project.** The user's Cowork project should carry these Instructions: "This
+is a website project. Use the website skill: run its start command before anything else,
+then read SITE.md." If a project has none, suggest them once. `$SITE init` also writes a
+pointer into `CLAUDE.md`, for tools that read it.
 
 Run `$SITE start` before anything else, then **read `SITE.md` in full**. It is the
 overview and the project's memory: what the site is, what has been done, and dated
@@ -119,8 +131,9 @@ $SITE diff <page> result.json    # are the edits valid? (or result.html, read ba
 $SITE scope <page> result.json   # do they stay on one page?
 ```
 
-**3. Apply the change** — in the site's admin, in the **Claude Desktop app browser**,
-always as a draft or preview. **The user publishes, never you.** The user logs in
+**3. Apply the change** — in the site's admin, in a browser where the user is logged
+in: **Claude in Chrome** (their own Chrome, with their saved logins) or Claude
+Desktop's browser. Always as a draft or preview. **The user publishes, never you.** The user logs in
 themselves; never ask for, type or store a password or 2FA code. If the login has
 expired, pause and ask them to log in again. Follow the platform's apply guide, and
 the project's `admin-guide.md` where it says something more specific. `$SITE page
@@ -158,7 +171,7 @@ answer as a note if it is a standing rule.
 ## Commands
 
 Project, on every site: `$SITE start [url]`, `$SITE detect <url>`, `$SITE init <url>
---platform <p>`, `$SITE note "<text>"`, `$SITE findings [--all]`, `$SITE finding <ID|new>
+--platform <p>`, `$SITE note "<text>"`, `$SITE findings [--all|--told]`, `$SITE finding <ID|new>
 "<text>"`, `$SITE help [craft|generic]`.
 
 On every site:
@@ -236,11 +249,14 @@ through it as the work goes; never turn it into a survey.
   `$SITE finding new "<text>"`. Facts about this one site go in `SITE.md`,
   `admin-guide.md` and `learnings.md` instead. Never put names, email addresses or
   anything private in a finding.
-- **Before the session ends, if anything was recorded, ask the user to send
-  `platform-findings.md` to Kheva**, who maintains the website skill. Say it plainly:
-  "This session found out how [platform]'s editor really works. Please send the file
-  platform-findings.md in this folder to Kheva, so the next site doesn't have to work it
-  out again." It holds nothing private about their site beyond its address.
+- **Suggesting the user sends the findings to Kheva happens rarely, never per session.**
+  Only when `$SITE start` says enough has built up: about half the checklist over a few
+  sessions, or all of it. Then mention it once, at a natural pause, in plain words: "Over
+  the last few sessions we've worked out how [platform]'s editor really behaves. When
+  you have a moment, please send the file platform-findings.md in this folder to Kheva,
+  who maintains this skill, so the next site doesn't have to work it out again." Then
+  run `$SITE findings --told`. Otherwise don't bring it up. If the user asks, it's fine
+  to tell them.
 
 The project's own files are read first in later sessions and override the bundled
 guide. Never edit files inside this skill's directory: they are replaced on every update.
