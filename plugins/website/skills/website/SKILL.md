@@ -49,18 +49,33 @@ Run `$SITE start` before anything else, then **read `SITE.md` in full**. It is t
 overview and the project's memory: what the site is, what has been done, and dated
 notes from earlier sessions. Read `learnings.md` too before applying anything.
 
+**Make sure they are in the right place.** A site's notes and learnings live in one
+project folder; a second folder for the same site splits them in two. You can only see
+the folder attached to this Cowork project, so ask rather than assume.
+
 - **No project yet:** ask which website they are working on (the address), then
   `$SITE start <url>`. That detects the platform.
+- **Before setting up anything, confirm it is new:** "Is this the first time you're
+  working on this site with Claude? If you've worked on it before, please open that same
+  Cowork project instead, so its notes carry over." If they have, stop and help them find
+  it. Only for a genuinely new site run `init`, with `--new` to show you asked; `init`
+  refuses without it.
 - **Detection is confident:** tell the user what it found ("This looks like a Shopify
-  store") and let them correct it. Then run `$SITE init <url> --platform <p>`.
+  store") and let them correct it. Then run `$SITE init <url> --platform <p> --new`.
 - **Detection is unsure:** ask with these exact options — **WordPress · Shopify ·
   Craft CMS · Squarespace · Other / not sure** — then run
-  `$SITE init <url> --platform <answer> --confirmed-by user`. Only if they pick
+  `$SITE init <url> --platform <answer> --confirmed-by user --new`. Only if they pick
   "not sure", ask what they see in the left-hand menu when they log in: Posts / Pages /
   Plugins means WordPress, Entries means Craft, Products / Orders means Shopify,
   Pages / Website means Squarespace.
-- **A different site from this folder's:** each website needs its own folder. Ask the
-  user to open or create one; do not mix two sites in one project.
+- **Where the project goes:** in the attached folder if it is empty; otherwise `init`
+  makes a subfolder named after the site, so nothing already there gets mixed in. A
+  folder can hold several sites this way. When the project is in a subfolder, pass
+  `--project <folder>` to every command; `$SITE start` says so.
+- **A different site from this folder's project:** ask which they meant. If it's this
+  folder's site, carry on. If it's another site they've worked on before, they should open
+  that site's Cowork project. If it's a new site, they should start a new Cowork project
+  with its own empty folder. Never mix two sites in one project folder.
 
 After `init`, fill in "What we can do here" in `SITE.md`.
 
@@ -173,8 +188,9 @@ answer as a note if it is a standing rule.
 ## Commands
 
 Project, on every site: `$SITE start [url]`, `$SITE detect <url>`, `$SITE init <url>
---platform <p>`, `$SITE note "<text>"`, `$SITE findings [--all|--told]`, `$SITE finding <ID|new>
-"<text>"`, `$SITE help [craft|generic]`.
+--platform <p> --new`, `$SITE note "<text>"`, `$SITE findings [--all|--told]`,
+`$SITE finding <ID|new> "<text>"`, `$SITE help [craft|generic]`. Every command takes
+`--project <folder>` when the site's project is in a subfolder.
 
 On every site:
 

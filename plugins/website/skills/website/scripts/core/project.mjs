@@ -13,7 +13,7 @@
 // Nothing here is ever written to the plugin directory: that is replaced on update.
 // Credentials are never written anywhere.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { SiteError, today } from './cli.mjs';
 import { ensureFindings } from './findings.mjs';
@@ -30,6 +30,44 @@ export const CLAUDE_MD_START = '<!-- website-skill:start -->';
 export const CLAUDE_MD_END = '<!-- website-skill:end -->';
 
 const NOTES_HEADING = '## Notes';
+
+/** A site's address reduced to its host, without `www.`: how sites are matched and named. */
+export const bareHost = (url) => new URL(/^https?:\/\//.test(url) ? url : `https://${url}`).host.replace(/^www\./, '');
+
+/** Nothing in the folder but hidden files. */
+export function isEmptyFolder(dir) {
+  return !existsSync(dir) || readdirSync(dir).every((name) => name.startsWith('.'));
+}
+
+/** Projects in the immediate subfolders of `dir`: a folder that holds several sites. */
+export function findProjects(dir = '.') {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((name) => !name.startsWith('.') && statSync(join(dir, name)).isDirectory())
+    .map((name) => loadProject(join(dir, name)))
+    .filter(Boolean);
+}
+
+/**
+ * Which project a command is about. The folder itself when it is a project; otherwise
+ * one of its subfolders — the one for `host` if given, or the only one there is. Users
+ * attach whatever folder they have to hand, so a site's project may sit one level down.
+ */
+export function resolveProject(dir = '.', { host = null } = {}) {
+  const here = loadProject(dir);
+  if (here) return { project: here, candidates: [here] };
+  const candidates = findProjects(dir);
+  if (host) return { project: candidates.find((p) => bareHost(p.site.url) === host) ?? null, candidates };
+  return { project: candidates.length === 1 ? candidates[0] : null, candidates };
+}
+
+/**
+ * Where a new project for `url` goes: the folder itself when it is empty, otherwise a
+ * subfolder named after the site, so nothing already there is mixed in with it.
+ */
+export function newProjectFolder(dir, url) {
+  return isEmptyFolder(dir) ? dir : join(dir, bareHost(url));
+}
 
 /** Paths inside a project folder. */
 export function projectPaths(dir) {

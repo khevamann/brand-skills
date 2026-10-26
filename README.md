@@ -25,7 +25,10 @@ site's admin, and a person publishes them.
    > This is a website project. Use the website skill: run its start command before
    > anything else, then read SITE.md.
 
-2. Say "I'm working on example.com".
+2. Say "I'm working on example.com". Before setting anything up, Claude checks this is
+   the first time they've worked on that site with Claude. If not, it asks them to open
+   that earlier project instead, so notes and learnings stay in one place. If the
+   attached folder already has things in it, the site gets its own subfolder.
 3. Claude detects the platform (or asks, offering WordPress · Shopify · Craft CMS ·
    Squarespace · Other) and sets up the folder:
 

@@ -11,17 +11,42 @@
 // browser, and a person publishes.
 
 import { existsSync, readFileSync } from 'node:fs';
+import { relative, resolve } from 'node:path';
 import { parseArgs, out, exitWith, GuardError, SiteError } from './core/cli.mjs';
 import { detect, findCraftGraphql } from './core/detect.mjs';
 import {
   PLATFORMS, loadProject, initProject, addNote, readNotes, projectPaths, writeClaudeMdBlock,
-  CLAUDE_MD_START,
+  CLAUDE_MD_START, bareHost, resolveProject, newProjectFolder,
 } from './core/project.mjs';
 import { ensureFindings, readFindings, recordFinding, nextQuestions, sendSuggestion, markSuggested, MAINTAINER } from './core/findings.mjs';
 import * as craft from './adapters/craft/cli.mjs';
 import * as generic from './adapters/generic/cli.mjs';
 
 const ADAPTERS = { craft, generic };
+
+/** The folder named by --project, or the current one. */
+const baseFolder = (flags) => (typeof flags.project === 'string' ? flags.project : '.');
+
+/** How to refer to a project folder in messages and in --project. */
+const shortPath = (dir) => relative(process.cwd(), dir) || '.';
+
+/**
+ * The project a command is about, or a clear refusal. Several sites under one folder
+ * need --project to say which; it is never guessed.
+ */
+function currentProject(flags, { required = true } = {}) {
+  const { project, candidates } = resolveProject(baseFolder(flags));
+  if (project) return project;
+  if (candidates.length > 1) {
+    throw new SiteError(
+      'This folder holds several website projects:\n' +
+        candidates.map((p) => `  ${shortPath(p.paths.root).padEnd(30)} ${p.site.url}`).join('\n') +
+        '\nAsk the user which site, then pass --project <folder> to every command.',
+    );
+  }
+  if (required) throw new SiteError('No website project here yet. Run `site start <url>` first.');
+  return null;
+}
 
 /** Which adapter serves a project: Craft's API when it has one, else the outside view. */
 function adapterName(site) {
@@ -33,9 +58,11 @@ const USAGE = `site — read-only tools for a website project
 Run from the project folder (one folder per website).
 
 PROJECT
-  site start [url]                   Resume this folder's project, or begin one for <url>
+  site start [url]                   Resume the project, or begin one for <url>
   site detect <url>                  Work out what platform a site runs on
-  site init <url> --platform <p>     Set up this folder for a site
+  site init <url> --platform <p> --new
+                                     Set up a project for a site: here if this folder is
+                                     empty, otherwise in a new subfolder named after the site
       p = craft | wordpress | shopify | squarespace | other
       --confirmed-by user|detection  Who decided the platform (default: detection)
       --graphql <url>                Craft only: the GraphQL endpoint, if detection missed it
@@ -43,6 +70,9 @@ PROJECT
   site findings [--all]              The platform checklist: the questions to answer now
       --told                         Record that the user was asked to send the findings
   site finding <ID|new> "<text>"     Record what a real admin showed (platform-findings.md)
+
+Every command takes --project <folder> to name the site's project folder. Without it,
+the current folder is used if it is a project, else its only project subfolder.
 
 PLATFORM COMMANDS
   Depend on the site. \`site help craft\` lists the Craft API ones; \`site help generic\`
@@ -89,6 +119,15 @@ async function cmdDetect(url) {
   out(describeDetection(result));
 }
 
+const NEW_SITE_QUESTION = [
+  'FIRST, before setting anything up, ask the user in plain words:',
+  '  "Is this the first time you\'re working on this site with Claude? If you\'ve worked on it',
+  '   before, please open that same Cowork project instead, so its notes and what we learned',
+  '   last time carry over."',
+  '  - Worked on it before → stop here. Don\'t set anything up; help them find that project.',
+  '  - New → carry on below, and pass --new to init to show you asked.',
+];
+
 function describeDetection(r) {
   const name = r.platform === 'other' ? (r.otherName ? `Other (${r.otherName})` : 'Other / unknown') : PLATFORMS[r.platform];
   const lines = [
@@ -103,16 +142,17 @@ function describeDetection(r) {
   lines.push('', 'Evidence:', ...(r.evidence.length ? r.evidence.map((e) => `  - ${e}`) : ['  - none']), '');
 
   const options = 'WordPress · Shopify · Craft CMS · Squarespace · Other / not sure';
+  lines.push(...NEW_SITE_QUESTION, '');
   if (r.ask) {
     lines.push(
-      'NEXT: ask the user which platform the site is built on, offering exactly these options:',
+      'THEN ask which platform the site is built on, offering exactly these options:',
       `  ${options}`,
-      'then run: site init <url> --platform <answer> --confirmed-by user',
+      'and run: site init <url> --platform <answer> --confirmed-by user --new',
     );
   } else {
     lines.push(
-      `NEXT: tell the user it looks like ${name} and let them correct it, then run:`,
-      `  site init ${r.url} --platform ${r.platform}` +
+      `THEN tell the user it looks like ${name} and let them correct it, and run:`,
+      `  site init ${r.url} --platform ${r.platform} --new` +
         (r.platform === 'craft' && r.craftGraphql ? ` --graphql ${r.craftGraphql}` : ''),
     );
   }
@@ -120,7 +160,11 @@ function describeDetection(r) {
 }
 
 async function cmdInit(url, flags) {
-  if (!url) throw new SiteError('Usage: site init <url> --platform <craft|wordpress|shopify|squarespace|other>');
+  if (!url) throw new SiteError('Usage: site init <url> --platform <craft|wordpress|shopify|squarespace|other> --new');
+  if (!flags.new) {
+    // A second project for a site splits its notes and learnings in two. Asking is cheap.
+    throw new SiteError(['Not set up yet.', '', ...NEW_SITE_QUESTION].join('\n'));
+  }
   const platform = String(flags.platform ?? '').toLowerCase().replace(/[\s-]*cms$/, '');
   if (!PLATFORMS[platform]) {
     throw new SiteError(
@@ -158,7 +202,21 @@ async function cmdInit(url, flags) {
     );
   }
 
-  const project = initProject('.', { url: target, platform, confirmedBy, detection, extra });
+  const base = baseFolder(flags);
+  const existing = resolveProject(base, { host: bareHost(target) }).project;
+  if (existing) {
+    throw new SiteError(`${target} is already set up in ${shortPath(existing.paths.root)}. Run \`site start ${target}\`.`);
+  }
+  const here = loadProject(base);
+  if (here) {
+    throw new SiteError(
+      `This folder is already the project for ${here.site.url}. To work on ${target} as well, ask the user ` +
+        'to attach a separate folder for it — or a parent folder that can hold both sites — in a new Cowork project.',
+    );
+  }
+  const folder = typeof flags.project === 'string' ? flags.project : newProjectFolder(base, target);
+  const project = initProject(folder, { url: target, platform, confirmedBy, detection, extra });
+  const inSubfolder = resolve(folder) !== resolve('.');
   const questions = readFindings(project)?.questions.length ?? 0;
   const status = platformStatus(project.site);
   out(
@@ -166,6 +224,12 @@ async function cmdInit(url, flags) {
       `PROJECT SET UP — ${project.site.url} (${project.site.platformName})`,
       '',
       `Folder: ${project.paths.root}`,
+      ...(inSubfolder
+        ? [
+            `  This folder already held other things, so the site got its own folder: ${shortPath(project.paths.root)}`,
+            `  Pass --project ${shortPath(project.paths.root)} to every command from now on.`,
+          ]
+        : []),
       '  SITE.md       overview and notes — read first every session',
       '  site.json     facts and state the scripts use',
       '  learnings.md  dated log of what worked and what broke',
@@ -187,28 +251,48 @@ async function cmdInit(url, flags) {
   );
 }
 
-function cmdStart(url) {
-  const project = loadProject('.');
+function cmdStart(url, flags) {
+  const base = baseFolder(flags);
+  const here = loadProject(base);
+  if (here && url && bareHost(url) !== bareHost(here.site.url)) {
+    throw new SiteError(
+      [
+        `This folder is the project for ${here.site.url}, not ${url}.`,
+        '',
+        'Ask the user which they meant:',
+        `  - ${here.site.url}: carry on here, with \`site start\`.`,
+        `  - ${url}, worked on before: open that site's own Cowork project, so its notes carry over.`,
+        `  - ${url}, new: start a new Cowork project with its own empty folder, and set it up there.`,
+      ].join('\n'),
+    );
+  }
+  const { project, candidates } = resolveProject(base, { host: url ? bareHost(url) : null });
   if (!project) {
     if (url) return cmdDetect(url);
+    if (candidates.length > 1) {
+      return out(
+        [
+          'This folder holds several website projects:',
+          ...candidates.map((p) => `  ${shortPath(p.paths.root).padEnd(30)} ${p.site.url}`),
+          '',
+          'NEXT: ask the user which site they are working on today, then run: site start <url>',
+        ].join('\n'),
+      );
+    }
     return out(
       [
         'This folder is not set up as a website project yet.',
         '',
         'NEXT: ask the user which website they are working on (its address), then run:',
         '  site start <url>',
+        '',
+        'If they have worked on a site with Claude before, this may be the wrong folder: ask',
+        'them to open that earlier Cowork project instead, so its notes carry over.',
       ].join('\n'),
     );
   }
 
   const { site, paths } = project;
-  const bareHost = (u) => new URL(/^https?:\/\//.test(u) ? u : `https://${u}`).host.replace(/^www\./, '');
-  if (url && bareHost(url) !== bareHost(site.url)) {
-    throw new SiteError(
-      `This folder is the project for ${site.url}, not ${url}. ` +
-        'Each website needs its own folder: ask the user to open (or create) one for it.',
-    );
-  }
 
   // Keep the pointer for new sessions in place, without touching anything else.
   if (!existsSync(paths.claudeMd) || !readFileSync(paths.claudeMd, 'utf8').includes(CLAUDE_MD_START)) {
@@ -229,6 +313,9 @@ function cmdStart(url) {
     '',
     `Platform:  ${site.platformName}${site.confirmedBy === 'user' ? ' (confirmed by the user)' : ' (detected)'}`,
     `Folder:    ${paths.root}`,
+    ...(resolve(paths.root) !== resolve('.')
+      ? [`           (a subfolder: pass --project ${shortPath(paths.root)} to every command)`]
+      : []),
     `Last export: ${state.lastExport ? `${state.lastExport.at.slice(0, 10)} — ${state.lastExport.pages} pages` : 'none'}`,
     `Last audit:  ${state.lastAudit ? `${state.lastAudit.at.slice(0, 10)} — ${state.lastAudit.file}` : 'none'}`,
     `Learnings:   ${learningsCount} dated entr${learningsCount === 1 ? 'y' : 'ies'} in learnings.md`,
@@ -258,8 +345,7 @@ function cmdStart(url) {
 }
 
 function cmdFindings(flags) {
-  const project = loadProject('.');
-  if (!project) throw new SiteError('No project in this folder. Run `site start <url>` first.');
+  const project = currentProject(flags);
   ensureFindings(project);
   if (flags.told) {
     markSuggested(project);
@@ -293,9 +379,8 @@ function cmdFindings(flags) {
   out(lines.join('\n'));
 }
 
-function cmdFinding(positional) {
-  const project = loadProject('.');
-  if (!project) throw new SiteError('No project in this folder. Run `site start <url>` first.');
+function cmdFinding(positional, flags) {
+  const project = currentProject(flags);
   const [id, ...words] = positional;
   if (!id) throw new SiteError('Usage: site finding <ID|new> "<what you saw, and how you know>"');
   const line = recordFinding(project, id === 'new' ? 'new' : id, words.join(' '));
@@ -308,9 +393,8 @@ function cmdFinding(positional) {
   ].join('\n'));
 }
 
-function cmdNote(positional) {
-  const project = loadProject('.');
-  if (!project) throw new SiteError('No project in this folder. Run `site start <url>` first.');
+function cmdNote(positional, flags) {
+  const project = currentProject(flags);
   out(`Added to SITE.md: ${addNote(project, positional.join(' '))}`);
 }
 
@@ -329,28 +413,28 @@ async function main() {
       return out(adapter ? adapter.USAGE : USAGE);
     }
     case 'start':
-      return cmdStart(positional[0]);
+      return cmdStart(positional[0], flags);
     case 'detect':
       return cmdDetect(positional[0]);
     case 'init':
       return cmdInit(positional[0], flags);
     case 'note':
-      return cmdNote(positional);
+      return cmdNote(positional, flags);
     case 'findings':
       return cmdFindings(flags);
     case 'finding':
-      return cmdFinding(positional);
+      return cmdFinding(positional, flags);
   }
 
   // Everything else belongs to a platform adapter.
-  const project = loadProject('.');
+  const project = currentProject(flags, { required: false });
   const name = typeof flags.endpoint === 'string' ? 'craft' : project ? adapterName(project.site) : null;
   const adapter = ADAPTERS[name];
 
   if (!adapter?.COMMANDS.includes(command)) {
     const known = Object.values(ADAPTERS).some((a) => a.COMMANDS.includes(command));
     if (!known) throw new GuardError(`Unknown command \`${command}\`.\n\n${USAGE}`);
-    if (!project) throw new SiteError(`No project in this folder. Run \`site start <url>\` first.`);
+    if (!project) throw new SiteError('No website project here yet. Run `site start <url>` first.');
     throw new SiteError(
       `\`${command}\` is not available for this site.\n${platformStatus(project.site).summary}\n` +
         `\`site help ${name}\` lists what is.`,

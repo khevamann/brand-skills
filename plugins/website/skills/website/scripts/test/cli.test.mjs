@@ -74,3 +74,41 @@ test('no endpoint is hard-coded: it comes from the project folder', async () => 
   const client = readFileSync(join(scripts, 'adapters', 'craft', 'client.mjs'), 'utf8');
   assert.doesNotMatch(client, /https?:\/\/[a-z0-9.-]+\.[a-z]{2,}/i);
 });
+
+test('a new project is only set up once the user has confirmed the site is new', async () => {
+  const { code, stderr } = await run(['init', 'https://example.invalid', '--platform', 'other']);
+  assert.equal(code, 1);
+  assert.match(stderr, /first time you're working on this site/);
+});
+
+test('one folder can hold several sites; which one is never guessed', async () => {
+  const { mkdtempSync: tmp, writeFileSync } = await import('node:fs');
+  const { initProject } = await import('../core/project.mjs');
+  const dir = tmp(join(tmpdir(), 'site-many-'));
+  writeFileSync(join(dir, 'notes.txt'), 'already here');
+  initProject(join(dir, 'a.example'), { url: 'https://a.example', platform: 'other', confirmedBy: 'user' });
+
+  let r = await run(['start'], dir);
+  assert.match(r.stdout, /WEBSITE PROJECT — https:\/\/a\.example/, 'a single site in a subfolder is found');
+  assert.match(r.stdout, /--project a\.example/);
+
+  initProject(join(dir, 'b.example'), { url: 'https://b.example', platform: 'other', confirmedBy: 'user' });
+  r = await run(['start'], dir);
+  assert.match(r.stdout, /several website projects/);
+  r = await run(['note', 'x'], dir);
+  assert.equal(r.code, 1, 'a command without --project refuses to guess');
+  r = await run(['note', 'Prefers British spelling.', '--project', 'b.example'], dir);
+  assert.equal(r.code, 0);
+  r = await run(['start', 'b.example'], dir);
+  assert.match(r.stdout, /WEBSITE PROJECT — https:\/\/b\.example/, 'a named site is found among several');
+});
+
+test('naming a different site from this folder\'s project asks which was meant', async () => {
+  const { mkdtempSync: tmp } = await import('node:fs');
+  const { initProject } = await import('../core/project.mjs');
+  const dir = tmp(join(tmpdir(), 'site-other-'));
+  initProject(dir, { url: 'https://a.example', platform: 'other', confirmedBy: 'user' });
+  const { code, stderr } = await run(['start', 'b.example'], dir);
+  assert.equal(code, 1);
+  assert.match(stderr, /worked on before: open that site's own Cowork project/);
+});
