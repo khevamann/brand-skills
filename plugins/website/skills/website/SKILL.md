@@ -68,10 +68,13 @@ the folder attached to this Cowork project, so ask rather than assume.
   "not sure", ask what they see in the left-hand menu when they log in: Posts / Pages /
   Plugins means WordPress, Entries means Craft, Products / Orders means Shopify,
   Pages / Website means Squarespace.
-- **Where the project goes:** in the attached folder if it is empty; otherwise `init`
-  makes a subfolder named after the site, so nothing already there gets mixed in. A
-  folder can hold several sites this way. When the project is in a subfolder, pass
-  `--project <folder>` to every command; `$SITE start` says so.
+- **Where the project goes:** one folder per site, attached to that site's own Cowork
+  project. Set up in the attached folder when it is empty. If it already holds other
+  files, `init` makes a subfolder named after the site so nothing gets mixed in, and
+  `$SITE start` then says to pass `--project <folder>` to every command. How the user
+  arranges the folders around a site's folder (a parent "Websites" folder, client
+  folders, anything) is theirs: never create, move, rename or tidy anything outside the
+  site's own folder.
 - **A different site from this folder's project:** ask which they meant. If it's this
   folder's site, carry on. If it's another site they've worked on before, they should open
   that site's Cowork project. If it's a new site, they should start a new Cowork project

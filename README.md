@@ -17,20 +17,56 @@ folder.
 **Read-only.** The scripts never change the website. Changes are made as drafts in the
 site's admin, and a person publishes them.
 
-## How people use it
+## Setup
 
-1. In **Claude Cowork**, create a project for the website (one project per site), attach
-   an empty folder to it, and paste this into the project's **Instructions**:
+### 1. Install the plugin (once)
 
-   > This is a website project. Use the website skill: run its start command before
-   > anything else, then read SITE.md.
+1. In Claude Desktop, open **Customize → Plugins → Add → Add marketplace** and enter
+   `khevamann/brand-skills`.
+2. Find **website** under **Discover** and install it.
+3. Turn on **Sync automatically** for the marketplace, or use **Check for updates**
+   from time to time.
 
-2. Say "I'm working on example.com". Before setting anything up, Claude checks this is
-   the first time they've worked on that site with Claude. If not, it asks them to open
-   that earlier project instead, so notes and learnings stay in one place. If the
-   attached folder already has things in it, the site gets its own subfolder.
-3. Claude detects the platform (or asks, offering WordPress · Shopify · Craft CMS ·
-   Squarespace · Other) and sets up the folder:
+### 2. Make a folder for the site
+
+**One folder per website.** Start with a new, empty folder for the site you're working
+on, for example `Acme website`. Everything Claude produces and learns about that site
+goes in it.
+
+If you look after more than one site, give each its own folder. Where those folders
+live is up to you. You can keep them side by side under a parent folder, or anywhere
+else that suits you:
+
+```
+Websites/                  ← yours to organise; the skill never touches it
+  Acme website/            ← one site
+  Kirby School website/    ← another site
+  Clients/Bakery website/  ← nest them however you like
+```
+
+The skill only works inside a site's own folder. It never creates, moves or tidies the
+folders around it.
+
+### 3. Create a Cowork project for the site
+
+In **Claude Cowork**, create a project for the site, attach **that site's folder**, and
+paste this into the project's **Instructions**:
+
+> This is a website project. Use the website skill: run its start command before
+> anything else, then read SITE.md.
+
+One Cowork project per site, each with that site's folder.
+
+### 4. Start working
+
+Say "I'm working on example.com". Claude then:
+
+1. **Checks it's a new site.** It asks whether this is the first time you've worked on
+   this site with Claude. If you have before, it asks you to open that earlier project
+   instead, so notes and learnings stay in one place.
+2. **Works out the platform** (or asks, offering WordPress · Shopify · Craft CMS ·
+   Squarespace · Other).
+3. **Sets up the folder:**
 
    ```
    SITE.md               what the site is, where things stand, notes from past sessions
@@ -40,8 +76,12 @@ site's admin, and a person publishes them.
    export/  audits/  design/  snapshots/
    ```
 
-4. Next time, start a new conversation in the same project. Claude reads `SITE.md` and
-   picks up where you left off.
+Next time, start a new conversation in the same Cowork project. Claude reads `SITE.md`
+and picks up where you left off.
+
+If the attached folder already had other files in it, Claude puts the site in its own
+subfolder instead of mixing it in. It's still simplest to give each site an empty
+folder of its own.
 
 When a change needs the site's admin, Claude works in a browser where you are logged in:
 Claude in Chrome (your own Chrome, with your saved logins) or Claude Desktop's browser.
@@ -98,17 +138,7 @@ to one page. It exits `3`, with an explanation, when a change reaches further:
 
 Nothing beyond a single page is applied without a person deciding the scope.
 
-## Install (Claude Cowork)
-
-1. In Claude Desktop, open **Customize → Plugins → Add → Add marketplace** and enter
-   `khevamann/brand-skills`.
-2. Find **website** under **Discover** and install it.
-3. Turn on **Sync automatically** for the marketplace, or use **Check for updates**
-   from time to time.
-
-There is nothing to configure: the first conversation in a project sets it up.
-
-**Before handing it out, check two things:**
+## Before handing it out
 
 - **Internet access for the scripts.** Cowork runs scripts in a sandbox whose internet
   access is limited to approved sites. On a Team or Enterprise plan, an organization
