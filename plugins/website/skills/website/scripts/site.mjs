@@ -30,6 +30,12 @@ const baseFolder = (flags) => (typeof flags.project === 'string' ? flags.project
 /** How to refer to a project folder in messages and in --project. */
 const shortPath = (dir) => relative(process.cwd(), dir) || '.';
 
+/** A folder as it must be typed in a command: quoted when it has spaces or quotes. */
+const shellArg = (dir) => {
+  const p = shortPath(dir);
+  return /^[\w./@+-]+$/.test(p) ? p : `"${p.replace(/(["\\$`])/g, '\\$1')}"`;
+};
+
 /**
  * The project a command is about, or a clear refusal. Several sites under one folder
  * need --project to say which; it is never guessed.
@@ -227,7 +233,7 @@ async function cmdInit(url, flags) {
       ...(inSubfolder
         ? [
             `  This folder already held other things, so the site got its own folder: ${shortPath(project.paths.root)}`,
-            `  Pass --project ${shortPath(project.paths.root)} to every command from now on.`,
+            `  Pass --project ${shellArg(project.paths.root)} to every command from now on.`,
           ]
         : []),
       '  SITE.md       overview and notes — read first every session',
@@ -314,7 +320,7 @@ function cmdStart(url, flags) {
     `Platform:  ${site.platformName}${site.confirmedBy === 'user' ? ' (confirmed by the user)' : ' (detected)'}`,
     `Folder:    ${paths.root}`,
     ...(resolve(paths.root) !== resolve('.')
-      ? [`           (a subfolder: pass --project ${shortPath(paths.root)} to every command)`]
+      ? [`           (a subfolder: pass --project ${shellArg(paths.root)} to every command)`]
       : []),
     `Last export: ${state.lastExport ? `${state.lastExport.at.slice(0, 10)} — ${state.lastExport.pages} pages` : 'none'}`,
     `Last audit:  ${state.lastAudit ? `${state.lastAudit.at.slice(0, 10)} — ${state.lastAudit.file}` : 'none'}`,

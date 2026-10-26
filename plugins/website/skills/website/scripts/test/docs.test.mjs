@@ -39,7 +39,7 @@ test('every command is listed in its usage text', () => {
       assert.match(usage, new RegExp(`site ${name}\\b`), `\`${name}\` missing from ${label} help`);
     }
   }
-  const siteUsage = site.slice(site.indexOf('const USAGE'), site.indexOf('`;'));
+  const siteUsage = site.slice(site.indexOf('const USAGE'), site.indexOf('`;', site.indexOf('const USAGE')));
   for (const name of projectCommands()) {
     assert.match(siteUsage, new RegExp(`site ${name}\\b`), `\`${name}\` missing from site help`);
   }
