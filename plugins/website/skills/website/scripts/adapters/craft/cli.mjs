@@ -93,7 +93,8 @@ async function cmdSections() {
 const STATUS_MAP = { live: ['live'], disabled: ['disabled'], all: null };
 
 async function cmdEntries(flags) {
-  const status = flags.status ? (STATUS_MAP[flags.status] ?? [flags.status]) : ['live'];
+  // `all` maps to null (no status filter), so test for the key rather than using ??.
+  const status = !flags.status ? ['live'] : flags.status in STATUS_MAP ? STATUS_MAP[flags.status] : [flags.status];
   const query = `
     query ($section: [String], $type: [String], $search: String, $limit: Int, $status: [String]) {
       entryCount(section: $section, type: $type, search: $search, status: $status)
@@ -124,9 +125,11 @@ async function cmdEntries(flags) {
 
 async function fetchEntryCore(id) {
   if (!id) throw new GuardError('An entry id is required.');
+  // drafts: null finds published entries and unpublished drafts (a new page not yet
+  // published); without it, a new page is "No entry".
   const query = `query ($id: [QueryArgument]) {
-    entry(id: $id, status: null) {
-      id title slug uri url status sectionHandle typeHandle dateUpdated __typename
+    entry(id: $id, status: null, drafts: null) {
+      id title slug uri url status sectionHandle typeHandle dateUpdated __typename draftId isUnpublishedDraft
     }
   }`;
   assertReadOnly(query);
@@ -148,7 +151,7 @@ async function cmdEntry(id) {
     else structured.push(`${f.name}: ${renderType(f.type)}`);
   }
 
-  const query = `query ($id: [QueryArgument]) { entry(id: $id, status: null) { ${leaves.join(' ')} } }`;
+  const query = `query ($id: [QueryArgument]) { entry(id: $id, status: null, drafts: null) { ${leaves.join(' ')} } }`;
   assertReadOnly(query);
   const data = await graphql(query, { id: [String(id)] });
 
@@ -174,7 +177,29 @@ async function cmdDrafts(entryId, flags) {
     }`;
   assertReadOnly(query);
   const data = await graphql(query, { draftOf: unpublished ? false : String(entryId) });
-  out({ scope: unpublished ? 'unpublished drafts' : `drafts of ${entryId}`, drafts: data.entries });
+  if (unpublished) return out({ scope: 'unpublished drafts', drafts: data.entries });
+
+  // Provisional drafts (someone's unsaved edits) are excluded unless asked for. They
+  // matter most before "Create a draft", which folds one into the new draft.
+  const provisionalQuery = `
+    query ($draftOf: QueryArgument) {
+      entries(draftOf: $draftOf, drafts: true, provisionalDrafts: true, status: null) {
+        id draftId draftName title dateUpdated
+      }
+    }`;
+  assertReadOnly(provisionalQuery);
+  const provisional = (await graphql(provisionalQuery, { draftOf: String(entryId) })).entries;
+  const self = data.entries.length ? null : await fetchEntryCore(entryId).catch(() => null);
+  out({
+    scope: `drafts of ${entryId}`,
+    drafts: data.entries,
+    provisionalDrafts: provisional,
+    hint: self?.isUnpublishedDraft
+      ? `Entry ${entryId} is itself an unpublished draft (draftId ${self.draftId}): a new page not yet published. Read it with \`site page ${entryId}\`.`
+      : provisional.length
+        ? 'A provisional draft holds unsaved edits. "Create a draft" in the control panel folds them into the new draft: check them first.'
+        : undefined,
+  });
 }
 
 // ------------------------------------------------- page content walking
@@ -327,7 +352,7 @@ async function cmdBlocks(flags) {
     'Nested blocks are owned by one page (single ownerId) and cannot be shared between',
     'pages. A repeated pattern is a convention you apply, not an object you reuse.',
   );
-  out(lines.join('\n'));
+  out(saveBlocksReport(lines));
 }
 
 /**
@@ -1340,3 +1365,12 @@ export const COMMANDS = [
   'overview', 'sections', 'entries', 'entry', 'page', 'blocks', 'export', 'grammar',
   'design-system', 'audit', 'brief', 'diff', 'scope', 'drafts', 'query', 'schema', 'mutations',
 ];
+
+/** Keep the block report in the project, so later sessions have it without a rescan. */
+function saveBlocksReport(lines) {
+  if (!ctx.project) return lines.join('\n');
+  mkdirSync(ctx.paths.design, { recursive: true });
+  const file = join(ctx.paths.design, 'blocks.md');
+  writeFileSync(file, `# Blocks — ${today()}\n\n\`\`\`\n${lines.join('\n')}\n\`\`\`\n`);
+  return `${lines.join('\n')}\n\nSaved to design/blocks.md`;
+}

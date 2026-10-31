@@ -132,3 +132,26 @@ test('blocks repeated on most pages become site layout', () => {
   assert.deepEqual(corpus[0].blocks.map((b) => b.id), ['own-a']);
   assert.equal(corpus[0].chrome[0]._region, 'layout');
 });
+
+test('blocks saves its report to the project, so later sessions have it', async () => {
+  const dir = project();
+  const { code, stdout } = await run(dir, ['blocks']);
+  assert.equal(code, 0, stdout);
+  const saved = readFileSync(join(dir, 'design', 'blocks.md'), 'utf8');
+  assert.match(saved, /BLOCK TYPES/);
+  assert.match(stdout, /Saved to design\/blocks\.md/);
+});
+
+test('the brief offers every block the editor has, once that list has been captured', async () => {
+  const dir = project();
+  let r = await run(dir, ['brief', 'home']);
+  assert.equal(r.code, 0, r.stderr);
+  const brief = () => readFileSync(join(dir, 'design', readdirSync(join(dir, 'design')).find((f) => f.startsWith('brief-'))), 'utf8');
+  assert.match(brief(), /not been captured yet/);
+
+  writeFileSync(join(dir, 'design', 'available-blocks.md'), '# Available blocks\n\n- Gallery: carousel, grid\n- Accordion\n');
+  r = await run(dir, ['brief', 'home']);
+  assert.equal(r.code, 0, r.stderr);
+  assert.match(brief(), /## Blocks the editor offers[\s\S]*Gallery: carousel, grid/);
+  assert.doesNotMatch(brief(), /not been captured yet/);
+});

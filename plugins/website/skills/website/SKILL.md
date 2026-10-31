@@ -32,13 +32,28 @@ Cowork, its sandbox).
 - **Node can't be installed:** tell the user plainly that the scripts can't run here
   yet, carry on by reading the site in the browser, and record it with
   `$SITE finding new` once a project exists. Otherwise put it in your reply.
+- **Cowork's shell on the user's computer doesn't start:** it needs up to about 17 GB
+  of free disk *(seen once)*. Work in the cloud workspace, and copy the project files
+  into the user's folder at the end of each piece of work, so nothing is lost. Tell the
+  user that freeing disk space fixes it.
 
-**If the scripts can't reach the website** ("Could not reach", a timeout, or a refusal
-from the network), Cowork's sandbox is probably not allowed onto that site. Tell the
-user in plain words that an Owner of their Claude organization needs to allow it:
-**Organization settings → Capabilities → Code execution**, turn on network access, and
-add the site's domain. Meanwhile, read pages through the browser or your web-fetch tool,
-and note the problem in `SITE.md`.
+**If the scripts can't reach the website.** `$SITE start` checks every session and
+says `Reach: NO` when it can't get through. It often can't: Cowork's sandbox only
+reaches allowed sites. Tell the user in plain words that an Owner of their Claude
+organization needs to allow it: **Organization settings → Capabilities → Code
+execution**, turn on network access, and add the site's domain. Note it in `SITE.md`.
+
+Until then, read the site through the browser. That's the built-in browser or Claude in
+Chrome, which can reach it even when the sandbox can't.
+
+- **Read pages:** on a tab open at the site, `fetch` each page in the sitemap and parse
+  it with DOMParser.
+- **Leave out the header, footer and navigation** before counting words or judging a
+  page thin. They repeat on every page and can add hundreds of words.
+- **Design system:** read the CSS custom properties and computed fonts and colours from
+  the page.
+- **Save what you find** where the scripts would: the review in `audits/`, problems in
+  `TODO.md`, and the design system in `design/system/DESIGN-SYSTEM.md`.
 
 **Resuming a project.** The user's Cowork project should carry these Instructions: "This
 is a website project. Use the website skill: run its start command before anything else,
@@ -82,46 +97,86 @@ the folder attached to this Cowork project, so ask rather than assume.
 
 After `init`, carry straight on with the first session below.
 
-### The first session: set up, snapshot, first review, done
+### The first session: capture the whole site, then hand over
 
-By the end of one short session, the folder is set up, the whole site is snapshotted,
-and what the first review found is on the to-do list. Then it ends. Getting through
-onboarding is the goal: don't work on the findings, tour every feature, or open new
-topics.
+By the end of the first session, the folder holds everything a later session needs to
+work on the site without rediscovering it:
+
+- the snapshot;
+- the design system;
+- the blocks the site is built from;
+- how pages are structured, and which parts are shared;
+- how the admin works;
+- a to-do list.
+
+It ends with next steps chosen for this site. Getting through it is the goal: don't
+work on findings or make changes, and don't open other topics.
 
 **How to talk during it.** Each message is one or two sentences: what is happening now,
 roughly how long it takes, and what you need from them, if anything. Describe the work,
 not the tools. Never mention commands, scripts, helper agents or output.
 
 1. **Set up** (above). Tell them what you found and that this folder now holds
-   everything about the site: "It's a Craft CMS site. I've set up this folder to keep
+   everything about the site: "It's a Squarespace site. I've set up this folder to keep
    everything about it."
-2. **Start the snapshot without waiting for it.** Run `$SITE export` as a background task
-   or hand it to a helper agent, whichever this app offers, so the conversation can go
-   on. Say: "I'm taking a snapshot of every page now. It takes a few minutes."
-3. **Meanwhile, ask for the one thing only they can do.** "While that runs, please sign
-   in to your site's admin in the browser: [admin address]. Tell me when you're in."
-   Once they are, check you can see the admin's list of pages and note the admin
-   address in `SITE.md`. Explore no further. If they'd rather not sign in now, skip it:
-   it's only needed for making changes. If the Cowork project has no Instructions yet,
-   suggest them now, once.
-4. **When the snapshot is done,** run `$SITE audit --links`. Put each problem worth
-   fixing on the to-do list (`TODO.md`, see below), broken links and leftover placeholder
-   copy first. Then tell them in two or three sentences what turned up, with counts and
-   one example, and that it's all on their to-do list for a future session. If nothing
-   turned up, say so plainly.
-5. **Record it.** Fill in "What we can do here" and "Current state" in `SITE.md`, with
-   the audit's headline.
-6. **Close** with how to come back, including prompts they can copy, and stop:
+2. **Start the capture without waiting for it.** Run these as background tasks, or hand
+   them to helper agents, whichever this app offers, so the conversation can go on:
+   - `$SITE export`
+   - `$SITE design-system`
 
-   > You're set up. Whenever you want to work on the site, start a new conversation in
-   > this project and say what you'd like, for example:
-   > - "Let's work through my to-do list."
-   > - "Let's update the About page."
-   > - "Run an SEO check on the site." (page titles, descriptions, missing image text)
-   > - "Run an accessibility check." (headings, link wording, contrast)
-   >
-   > I'll pick up from the notes in this folder.
+   Run `$SITE blocks` once the export is done. Say: "I'm capturing your whole site now:
+   every page, your colours and fonts, and the building blocks your pages use. It takes
+   a few minutes."
+3. **Meanwhile, learn the editor and what it offers.** The public site only shows the
+   blocks in use, but a design may use anything the editor can add. So this step decides
+   what designs can be built from. Ask early: "While that runs, please sign in to your
+   site's admin in the browser: [admin address]. Tell me when you're in." Then look
+   around without changing anything:
+   - **What the editor offers.** Open a page in the editor, then the menu for adding a
+     block, then the one for adding a section or layout. Write every option, as labelled
+     and grouped, into `design/available-blocks.md`. Note any that are locked to a
+     higher plan, and what each block's settings offer (a gallery's carousel or grid
+     layouts, for example). Close each menu without choosing anything, and leave the
+     editor without saving.
+   - **Global styles as the editor names them:** fonts, colours and colour themes, and
+     button styles, plus where any custom CSS or code injection lives. Add these to
+     `design/system/DESIGN-SYSTEM.md` under "As named in the editor".
+   - **A style guide or component page** (often hidden from the menu). If there is one,
+     run `$SITE design-system --url <that page>`: it shows every component styled.
+   - **How the admin works:** the pages list, where the header and footer are set, how
+     drafts or previews work, and the exact label of every button that publishes. Write
+     this into `admin-guide.md`, answering the platform checklist as you go.
+
+   Note the admin address in `SITE.md`. On Craft with its API, `$SITE grammar` already
+   lists what each field accepts, so skip `available-blocks.md` there. If they can't sign
+   in now, say designs will stick to the blocks already on the site until a later session
+   captures the rest, and add that to the to-do list.
+4. **Audit.** When the export is done, run `$SITE audit --links`. Put each problem worth
+   fixing on the to-do list (`TODO.md`, see below), broken links and leftover placeholder
+   copy first.
+5. **Write down how the site is built.** In `SITE.md`, under "How the site is built":
+   - the main pages and how they nest;
+   - what every page shares: header, navigation, footer, and anything repeated across
+     pages, such as a pre-footer or announcement bar;
+   - the block types in use (`design/blocks.md`) and on offer (`design/available-blocks.md`);
+   - where the design system is (`design/system/DESIGN-SYSTEM.md`).
+
+   Also fill in "What we can do here" and "Current state".
+6. **Report and hand over** in one message, then stop:
+   - Two or three sentences on what you captured and what the audit found, with counts
+     and one example. Say the problems are on their to-do list.
+   - "Everything is saved in this folder, so there's nothing for you to save."
+   - **Three or four next steps for this site**, as prompts they can copy. Each one names
+     a real page or gap you found, and only uses blocks the site already has. Include at
+     least one redesign and one new page, for example:
+     - "Redesign the About page with a photo carousel at the top."
+     - "Create a new page for upcoming events."
+     - "Work through my to-do list."
+   - How to come back: "Whenever you want to do one of these, start a new conversation
+     in this project and paste it in. I'll pick up from the notes in this folder." Add
+     that they can also ask for an SEO, accessibility or layout check at any time. A
+     layout check looks at every page from phone to desktop widths for overlapping or
+     overflowing content.
 
 ## 2. Keep the project folder current — this is how the next session knows anything
 
@@ -212,6 +267,16 @@ the project's `admin-guide.md` where it says something more specific. `$SITE pag
 <page>` shows a direct link into the admin where the platform allows one (the page's
 editor, or Shopify's theme editor at that page).
 
+Driving an admin in the browser:
+
+- **If a click does nothing**, as happens with menus and side panels, call the element's
+  `.click()`, or dispatch pointer events, from JavaScript. Then check that the state
+  really changed.
+- **For formatted text,** go through the editor's own interface rather than typing: its
+  API, or a paste event carrying `text/html`. Then read the field back.
+- **Before handing a change back,** look at it at desktop, tablet and phone widths.
+  Layout problems often only show on the narrower ones.
+
 Be straight about limits when asked. They are structural, not missing features:
 
 - **The scripts change nothing.** No write command exists, and `query` rejects any
@@ -255,7 +320,7 @@ On every site:
 | `$SITE export` | Whole site to disk. Outside view: `[--limit n] [--delay ms]`; Craft: `[--no-html]` |
 | `$SITE audit [--links]` | Placeholders, empty blocks, broken links, repeated copy → `audits/` |
 | `$SITE page <page> [--raw]` | A page's copy, block by block. Outside view: `--chrome`, `--live` |
-| `$SITE blocks` | The block types in use, and their copy fields |
+| `$SITE blocks` | The block types in use, and their copy fields → `design/blocks.md` |
 | `$SITE design-system [--url URL]` | Live tokens, colours, fonts, classes → `design/system/` |
 | `$SITE brief <page>` | A paste-ready design brief → `design/brief-<id>.md` |
 | `$SITE diff <page> <file.json\|.html>` | What an edited result would change |

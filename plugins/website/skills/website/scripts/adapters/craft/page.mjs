@@ -122,7 +122,7 @@ export async function fetchPageTree(core, depth = 3) {
   }
 
   const query = `query Page($id: [QueryArgument]) {
-  entry(id: $id, status: null) {
+  entry(id: $id, status: null, drafts: null) {
     id title uri url status dateUpdated
     ... on ${core.__typename} { ${parts.join('\n      ')} }
   }

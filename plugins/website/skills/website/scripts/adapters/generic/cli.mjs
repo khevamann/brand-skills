@@ -418,7 +418,7 @@ async function cmdBlocks(flags) {
     'These are inferred from the published pages, not read from the CMS. A design should',
     'reuse these patterns; anything new needs to be possible in the site\'s editor.',
   );
-  out(lines.join('\n'));
+  out(saveBlocksReport(lines));
 }
 
 async function cmdDesignSystem(flags) {
@@ -652,6 +652,10 @@ async function cmdBrief(ref, flags) {
   const entry = await getPage(ref, flags);
   const index = loadIndex(flags);
   const vocabulary = index ? [...new Set(index.pages.flatMap((p) => p.blockTypes))].sort() : [...new Set(entry.blocks.map((b) => b.__typename))];
+  // What the editor's menus offer, written while exploring the admin. The site only shows
+  // what is in use; a design may use anything the editor can add.
+  const availableFile = join(ctx.paths.design, 'available-blocks.md');
+  const available = existsSync(availableFile) ? readFileSync(availableFile, 'utf8') : null;
   const lines = [
     `# Design brief — ${entry.page.title || entry.page.url}`,
     '',
@@ -660,13 +664,23 @@ async function cmdBrief(ref, flags) {
     '',
     '## Non-negotiable constraints',
     '',
-    "- **Build from the block types this site already uses** (listed below). Every block has to",
-    "  be something the site's editor can create; anything new needs the site's developers.",
+    ...(available
+      ? [
+          "- **Build only from the blocks the site's editor offers**, listed under \"Blocks the editor",
+          '  offers\". Those already on the site are listed after them; reuse their patterns where',
+          "  they fit. Anything else needs the site's developers.",
+        ]
+      : [
+          "- **Build from the block types this site already uses** (listed below). Every block has to",
+          "  be something the site's editor can create; anything new needs the site's developers.",
+          "  The full list of blocks the editor offers has not been captured yet, so stay with these.",
+        ]),
     '- **Use the design system in `DESIGN-SYSTEM.md`** and the rendered `style-guide.html`.',
     '  Colours, fonts and spacing come from there, never new values.',
     '- **Leave the header, footer and navigation alone.** They are on every page.',
     ...(PLATFORM_DESIGN_NOTES[platform()] ? ['', PLATFORM_DESIGN_NOTES[platform()]] : []),
     '',
+    ...(available ? ['## Blocks the editor offers', '', available.replace(/^# .*\n+/, '').trim(), ''] : []),
     '## Block types on this site',
     '',
     vocabulary.map((t) => `\`${t}\``).join(', '),
@@ -911,4 +925,13 @@ export async function run(command, positional, flags, context = {}) {
     default:
       throw new SiteError(`Unknown command \`${command}\`.\n\n${USAGE}`);
   }
+}
+
+/** Keep the block report in the project, so later sessions have it without a rescan. */
+function saveBlocksReport(lines) {
+  if (!ctx.project) return lines.join('\n');
+  mkdirSync(ctx.paths.design, { recursive: true });
+  const file = join(ctx.paths.design, 'blocks.md');
+  writeFileSync(file, `# Blocks — ${today()}\n\n\`\`\`\n${lines.join('\n')}\n\`\`\`\n`);
+  return `${lines.join('\n')}\n\nSaved to design/blocks.md`;
 }

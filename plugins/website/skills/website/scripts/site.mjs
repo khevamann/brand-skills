@@ -13,10 +13,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { parseArgs, out, exitWith, GuardError, SiteError } from './core/cli.mjs';
-import { detect, findCraftGraphql } from './core/detect.mjs';
+import { detect, findCraftGraphql, checkReach } from './core/detect.mjs';
 import {
   PLATFORMS, loadProject, initProject, addNote, readNotes, projectPaths, writeClaudeMdBlock, ensureTodo, readTodos,
-  CLAUDE_MD_START, bareHost, resolveProject, newProjectFolder,
+  CLAUDE_MD_START, bareHost, resolveProject, newProjectFolder, recordState,
 } from './core/project.mjs';
 import { ensureFindings, readFindings, recordFinding, nextQuestions, sendSuggestion, markSuggested, MAINTAINER } from './core/findings.mjs';
 import * as craft from './adapters/craft/cli.mjs';
@@ -253,13 +253,14 @@ async function cmdInit(url, flags) {
       'conversations resume it: "This is a website project. Use the website skill: run its start',
       'command before anything else, then read SITE.md."',
       '',
-      'NEXT: the first session (SKILL.md): start the export in the background, ask the user to',
-      'sign in to the admin meanwhile, then audit --links, record SITE.md, and close.',
+      'NEXT: the first session (SKILL.md): capture the site in the background (export, design-system,',
+      'then blocks), learn the admin with the user meanwhile, audit --links, write "How the site is',
+      'built" in SITE.md, and hand over with next steps for this site.',
     ].join('\n'),
   );
 }
 
-function cmdStart(url, flags) {
+async function cmdStart(url, flags) {
   const base = baseFolder(flags);
   const here = loadProject(base);
   if (here && url && bareHost(url) !== bareHost(here.site.url)) {
@@ -310,6 +311,8 @@ function cmdStart(url, flags) {
   ensureFindings(project);
   ensureTodo(project);
   const todos = readTodos(project);
+  const reach = await checkReach(site.url);
+  recordState(project, 'reach', reach);
   const next = nextQuestions(project);
   const status = platformStatus(site);
   const state = site.state ?? {};
@@ -331,6 +334,13 @@ function cmdStart(url, flags) {
     `Learnings:   ${learningsCount} dated entr${learningsCount === 1 ? 'y' : 'ies'} in learnings.md`,
     `Admin guide: ${existsSync(paths.adminGuide) ? 'admin-guide.md' : 'not written yet — write one the first time the admin is explored'}`,
     '',
+    `Reach:     ${reach.ok ? 'yes, the scripts can read the site' : `NO (${reach.why}). The scripts can't read the site from here`}`,
+    ...(reach.ok
+      ? []
+      : [
+          '           Read it through the browser instead (SKILL.md, "If the scripts can\'t reach the',
+          '           website"), and tell the user how to allow it.',
+        ]),
     `What works here: ${status.summary}`,
     `Guide: ${status.guide}`,
     ...(next

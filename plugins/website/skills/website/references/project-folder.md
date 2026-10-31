@@ -14,7 +14,8 @@ stopped**. Nobody should have to keep one long conversation alive.
   platform-findings.md   what this project taught us about the PLATFORM, for the skill
   export/          the site, exported
   audits/          audit reports, one per run, dated
-  design/          design system, briefs, results from Claude Design
+  design/          design system, blocks in use (blocks.md) and on offer (available-blocks.md),
+                   briefs, Claude Design results
   snapshots/       copies of a page taken before editing it
   CLAUDE.md        a marked block telling new sessions to read SITE.md
 ```
@@ -24,7 +25,7 @@ stopped**. Nobody should have to keep one long conversation alive.
 
 ## SITE.md
 
-Written for a person as much as for Claude. Four sections:
+Written for a person as much as for Claude. Five sections:
 
 - **What this site is** — address, platform and how it was decided (detected or
   confirmed by the user), the admin address, and the plan or theme where it matters
@@ -32,6 +33,10 @@ Written for a person as much as for Claude. Four sections:
   slots used").
 - **What we can do here** — plainly: which flows work, and which need someone logged in
   to the admin in the browser.
+- **How the site is built** — written in the first session: the main pages and how they
+  nest, what every page shares (header, navigation, footer, anything repeated across
+  pages), the block types in use (detail in `design/blocks.md`), and where the design
+  system is.
 - **Current state** — where things stand: last export and audit with their headline
   numbers, any design change in progress and which step it is on, anything waiting on
   the user. Rewrite this section rather than appending to it.

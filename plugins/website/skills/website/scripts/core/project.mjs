@@ -258,6 +258,12 @@ function siteMdTemplate(site) {
 _Fill in once known: which flows work on this site, and whether applying a change
 needs someone logged in to the admin in the app browser._
 
+## How the site is built
+
+_Filled in during the first session: main pages and how they nest, what every page
+shares (header, navigation, footer, anything repeated), the block types in use
+(design/blocks.md), and the design system (design/system/DESIGN-SYSTEM.md)._
+
 ## Current state
 
 _Nothing done yet._

@@ -36,8 +36,9 @@ There are two ways in. The marketplace keeps itself up to date, so use it when y
 Use this when you can't add the marketplace, or someone has sent you the skill as a file.
 
 1. Get `website-skill.zip`. It's attached to the latest release on this repository's
-   **Releases** page, or the person who maintains the skill can send it to you. Don't
-   unzip it.
+   **Releases** page, under **Assets**, or the person who maintains the skill can send
+   it to you. Don't unzip it, and don't use **Source code (zip)**. That is the whole
+   repository, which Claude rejects with "a skill cannot contain a plugin manifest".
 2. Check that Claude can run code: **Settings → Capabilities → Code execution and file
    creation** must be on. On a Team or Enterprise plan, an organization Owner may also
    need to allow skills.
@@ -97,12 +98,17 @@ Say "I'm working on example.com". Claude then:
    platform-findings.md  what this project taught us about the platform itself
    export/  audits/  design/  snapshots/
    ```
-4. **Takes a snapshot of every page.** This takes a few minutes. Meanwhile, it asks you
-   to sign in to your site's admin in the browser.
-5. **Runs a first review** for broken links and leftover placeholder text, adds what it
-   finds to your to-do list, and tells you briefly what turned up.
-6. **Wraps up** with prompts you can use to start later sessions, such as "Let's work
-   through my to-do list" or "Run an SEO check on the site".
+4. **Captures the whole site:** every page, the design system (colours, fonts, styles),
+   the building blocks your pages use, and what every page shares, such as the header
+   and footer. This takes a few minutes. Meanwhile, it asks you to sign in to your site's
+   admin in the browser, and notes how your editor works without changing anything.
+5. **Runs a first review** for broken links and leftover placeholder text, and adds what
+   it finds to your to-do list.
+6. **Hands over** with next steps chosen for your site, as prompts you can copy into a
+   new conversation, such as "Redesign the About page with a photo carousel at the
+   top" or "Create a new page for upcoming events".
+
+Everything is saved in the folder as it goes, so there's nothing for you to save.
 
 Next time, start a new conversation in the same Cowork project and say which page you
 want to work on. Claude reads `SITE.md` and picks up where you left off.

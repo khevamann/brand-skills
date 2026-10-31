@@ -21,15 +21,19 @@ plus the edit manifest below.
 
 ## 1. The design must stay inside the block vocabulary
 
-Run `site blocks` first, every time. It is the authoritative list of what the front end
-can render, derived from the live site rather than guessed.
+Run `site blocks` first, every time. It lists the blocks the live site uses. What the
+editor can *add* may be wider: `design/available-blocks.md` records the editor's own
+menus, captured while exploring the admin, and on Craft's API `site grammar` lists what
+each field accepts. `site brief` includes whichever exists.
 
 Three hard constraints to state in any design brief:
 
-- **Only the block types in use exist.** Anything outside them cannot be stored or
-  rendered. A new type needs a CMS change *and* a matching front-end template or
-  component, from the site's developers. On Craft neither is reachable through the API,
-  which cannot touch the content model at all.
+- **Only the blocks the editor offers exist.** On a hosted builder (Squarespace,
+  WordPress, Shopify) that is the editor's add-block and add-section menus, which can
+  include blocks not yet used on the site. On a custom-built front end (headless Craft)
+  it is the block types the CMS defines, and nothing else renders. Anything outside them
+  needs the site's developers: on Craft, a CMS change *and* a matching front-end
+  component, neither reachable through the API.
 - **An embed block, if the site has one, is the escape hatch.** On the Digistorm site,
   `ds_EmbedBlock`'s `embed_Code` stores raw HTML and injects it on hydration. Use it for
   a section the vocabulary cannot express. Client-side rendering makes it invisible to a
@@ -107,7 +111,8 @@ Either way, make the change as a **draft** and let a human publish.
 
 ## Before each round trip
 
-1. `site blocks` — the current vocabulary, with example copy per field.
+1. `site blocks` — the blocks in use, with example copy per field. Plus
+   `design/available-blocks.md` (or `site grammar` on Craft) for what the editor offers.
 2. `site page <id>` — the page as it stands, with block ids.
 3. `site export` — refresh the corpus if the site has moved on.
 4. Read the project's `learnings.md` — what broke last time.

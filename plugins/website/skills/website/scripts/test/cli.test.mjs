@@ -112,3 +112,16 @@ test('naming a different site from this folder\'s project asks which was meant',
   assert.equal(code, 1);
   assert.match(stderr, /worked on before: open that site's own Cowork project/);
 });
+
+test('start says up front when the scripts cannot reach the site, and records it', async () => {
+  const { mkdtempSync: tmp, readFileSync } = await import('node:fs');
+  const { initProject } = await import('../core/project.mjs');
+  const dir = tmp(join(tmpdir(), 'site-reach-'));
+  initProject(dir, { url: 'http://127.0.0.1:9', platform: 'squarespace', confirmedBy: 'user' });
+  const { code, stdout } = await run(['start'], dir);
+  assert.equal(code, 0);
+  assert.match(stdout, /Reach:\s+NO/);
+  assert.match(stdout, /browser/);
+  const site = JSON.parse(readFileSync(join(dir, 'site.json'), 'utf8'));
+  assert.equal(site.state.reach.ok, false);
+});

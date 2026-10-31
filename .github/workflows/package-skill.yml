@@ -55,6 +55,13 @@ jobs:
           if gh release view "$TAG" > /dev/null 2>&1; then
             echo "$TAG is already released; bump the version in plugin.json to release again."
           else
+            {
+              echo "**To install:** download \`website-skill.zip\` below and upload it in Claude under"
+              echo "Customize → Skills → + → Create skill → Upload a skill."
+              echo
+              echo "Don't use \"Source code (zip)\": GitHub adds it to every release, and it is the whole"
+              echo "repository, which Claude rejects (\"a skill cannot contain a plugin manifest\")."
+            } > notes.md
             gh release create "$TAG" dist/website-skill.zip \
-              --target "$GITHUB_SHA" --title "website skill $TAG" --generate-notes
+              --target "$GITHUB_SHA" --title "website skill $TAG" --notes-file notes.md --generate-notes
           fi

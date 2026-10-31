@@ -130,6 +130,22 @@ export function scoreResponse(r, probes = {}) {
 
 // ----------------------------------------------------------------- network
 
+/**
+ * Can the scripts reach the site from here? Cowork's sandbox only reaches allowed
+ * domains, and a blocked site fails as a DNS error, a refused connection, or a proxy's
+ * 403. Never throws: the answer decides between the scripts and the browser.
+ */
+export async function checkReach(url, { timeout = 8000 } = {}) {
+  try {
+    const res = await fetch(url, { headers: { 'User-Agent': UA }, redirect: 'follow', signal: AbortSignal.timeout(timeout) });
+    await res.body?.cancel().catch(() => {});
+    if (res.status < 400) return { ok: true, status: res.status };
+    return { ok: false, status: res.status, why: `HTTP ${res.status}${res.status === 403 ? ' (often the sandbox network proxy)' : ''}` };
+  } catch (err) {
+    return { ok: false, why: err.cause?.code ?? err.name ?? 'no answer' };
+  }
+}
+
 /** GET a URL, returning what detection needs. Never throws for HTTP errors. */
 export async function fetchPage(url, { timeout = 15000 } = {}) {
   let res;
