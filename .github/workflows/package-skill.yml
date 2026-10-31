@@ -1,0 +1,60 @@
+name: Package skill
+
+# Builds website-skill.zip: the `website` skill folder, ready for Customize → Skills →
+# Upload a skill. Every run keeps the zip as a workflow artifact. On main, when the
+# version in plugin.json has no release yet, it also publishes release v<version> with
+# the zip attached, so bumping the version is all a release takes.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Test
+        run: node --test 'plugins/website/skills/website/scripts/test/*.test.mjs'
+
+      - name: Read version
+        id: version
+        run: echo "version=$(node -p "require('./plugins/website/.claude-plugin/plugin.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Build zip
+        # The zip holds the skill folder itself (website/SKILL.md, not SKILL.md at the
+        # root), as Claude's skill upload expects. Tests stay out of it.
+        run: |
+          mkdir -p dist
+          cd plugins/website/skills
+          zip -r -X ../../../dist/website-skill.zip website -x 'website/scripts/test/*' '*.DS_Store'
+          cd ../../..
+          unzip -l dist/website-skill.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: website-skill-${{ steps.version.outputs.version }}
+          path: dist/website-skill.zip
+
+      - name: Release this version if it is new
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v${{ steps.version.outputs.version }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "$TAG is already released; bump the version in plugin.json to release again."
+          else
+            gh release create "$TAG" dist/website-skill.zip \
+              --target "$GITHUB_SHA" --title "website skill $TAG" --generate-notes
+          fi
