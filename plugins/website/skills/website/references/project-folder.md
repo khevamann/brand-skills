@@ -109,9 +109,8 @@ Machine-readable, maintained by the scripts. Hand-editable fields:
 
 ## CLAUDE.md
 
-Cowork does not promise to read `CLAUDE.md`, so the user's Cowork project carries the
-real pointer in its Instructions ("This is a website project. Use the website skill: run
-its start command before anything else, then read SITE.md."). The skill still keeps a
-short block in `CLAUDE.md`, between `<!-- website-skill:start -->` and
+New chats in the same Cowork project see the same folder, and the skill's own
+`start` command is what resumes a project, so the Cowork project needs no Instructions.
+The skill still keeps a short block in `CLAUDE.md`, between `<!-- website-skill:start -->` and
 `<!-- website-skill:end -->`, for tools that do read it (Claude Code). Anything outside
 the markers belongs to the user and is never touched.

@@ -5,14 +5,14 @@
   },
   "metadata": {
     "description": "Claude skills for working on brands and their websites",
-    "version": "0.5.1"
+    "version": "0.6.0"
   },
   "plugins": [
     {
       "name": "website",
       "source": "./plugins/website",
       "description": "Work on a website built with Craft CMS, WordPress, Shopify, Squarespace or anything else. Read-only: it never creates, edits, publishes or deletes anything on the site.",
-      "version": "0.5.1",
+      "version": "0.6.0",
       "category": "content",
       "keywords": [
         "website",

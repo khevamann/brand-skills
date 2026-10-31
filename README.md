@@ -17,6 +17,40 @@ folder.
 **Read-only.** The scripts never change the website. Changes are made as drafts in the
 site's admin, and a person publishes them.
 
+## Getting someone started
+
+Send this email with `website-skill.zip` from the
+[latest release](https://github.com/khevamann/brand-skills/releases/latest), downloaded
+from its **Assets**. Don't use "Source code (zip)".
+
+> **Subject:** Getting set up to work on your website with Claude
+>
+> Hi! Here's how to get set up. It takes about five minutes, and then Claude walks you
+> through the rest.
+>
+> 1. **Install the skill.** In Claude, open **Customize → Skills**, click **+**, then
+>    **Create skill → Upload a skill**, and choose the attached `website-skill.zip`.
+>    Don't unzip it first. Make sure **website** is switched on.
+> 2. **Make an empty folder** on your computer for the site, for example "Acme website".
+> 3. **Create a project in Cowork** (for example "Acme Website") and attach that folder.
+>    You don't need to fill in a description or instructions.
+> 4. **In that project, start a new chat** and say: "I'm working on acme.com" (your
+>    site's address).
+>
+> Claude takes it from there. It asks you to let it read your site, and then to sign in
+> to your site's editor in the browser. While you do that, it takes a snapshot of every
+> page and checks for problems. Then it goes over what it found, captures your colours,
+> fonts and building blocks, and finishes with some example requests to try. The first
+> session takes about 20 minutes.
+>
+> After that, **always start new chats inside that same project.** That's how Claude
+> remembers your site. Paste in one of the example requests, or ask for whatever you
+> need.
+
+If Claude can't upload the skill, **Settings → Capabilities → Code execution and file
+creation** is probably off. On a Team or Enterprise plan, an Owner may also need to allow
+skills, and to allow Claude to reach the site's address.
+
 ## Setup
 
 ### 1. Install the skill (once)
@@ -71,13 +105,9 @@ folders around it.
 
 ### 3. Create a Cowork project for the site
 
-In **Claude Cowork**, create a project for the site, attach **that site's folder**, and
-paste this into the project's **Instructions**:
-
-> This is a website project. Use the website skill: run its start command before
-> anything else, then read SITE.md.
-
-One Cowork project per site, each with that site's folder.
+In **Claude Cowork**, create a project for the site and attach **that site's folder**.
+It needs no description or instructions. Use one Cowork project per site, each with
+that site's folder.
 
 ### 4. Start working
 
@@ -98,15 +128,17 @@ Say "I'm working on example.com". Claude then:
    platform-findings.md  what this project taught us about the platform itself
    export/  audits/  design/  snapshots/
    ```
-4. **Captures the whole site:** every page, the design system (colours, fonts, styles),
-   the building blocks your pages use, and what every page shares, such as the header
-   and footer. This takes a few minutes. Meanwhile, it asks you to sign in to your site's
-   admin in the browser, and notes how your editor works without changing anything.
-5. **Runs a first review** for broken links and leftover placeholder text, and adds what
-   it finds to your to-do list.
-6. **Hands over** with next steps chosen for your site, as prompts you can copy into a
-   new conversation, such as "Redesign the About page with a photo carousel at the
-   top" or "Create a new page for upcoming events".
+4. **Makes sure it can read the site.** If Claude isn't allowed to reach it yet, it asks
+   you to allow it before going on.
+5. **Takes a snapshot of every page and checks it for problems**, in the background.
+   Meanwhile, it asks you to sign in to your site's editor in the browser, and notes
+   what the editor can add and how it works, without changing anything.
+6. **Goes over what it found** and adds problems to your to-do list. Meanwhile, it
+   captures the design system (colours, fonts, styles) and the building blocks your
+   pages use.
+7. **Hands over** with what you can do together and prompts to paste into a new chat in
+   the same project, such as "Redesign the About page with a photo carousel at the top"
+   or "Create a new page for upcoming events".
 
 Everything is saved in the folder as it goes, so there's nothing for you to save.
 

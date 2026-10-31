@@ -249,13 +249,9 @@ async function cmdInit(url, flags) {
         ? ['', 'No public Craft GraphQL endpoint was found. If the user knows one, re-run init with --graphql.']
         : []),
       '',
-      'If this is a Cowork project without Instructions yet, suggest these to the user once, so new',
-      'conversations resume it: "This is a website project. Use the website skill: run its start',
-      'command before anything else, then read SITE.md."',
-      '',
-      'NEXT: the first session (SKILL.md): capture the site in the background (export, design-system,',
-      'then blocks), learn the admin with the user meanwhile, audit --links, write "How the site is',
-      'built" in SITE.md, and hand over with next steps for this site.',
+      'NEXT: the first session (SKILL.md): make sure the site is reachable, then snapshot and audit',
+      'in the background while the user signs in and you learn the editor; go over the review while',
+      'blocks and the design system are captured; write "How the site is built"; hand over.',
     ].join('\n'),
   );
 }
@@ -277,8 +273,8 @@ function reachLines(reach, { blockedSince, lifted, raisedBefore }) {
   }
   return [
     `Reach:     NO (${reach.why}). The scripts can't read the site from here right now.`,
-    '           Ask the user once how to allow it, then work through the browser meanwhile',
-    '           (SKILL.md, "If the scripts can\'t reach the website").',
+    '           Ask the user once to allow it, before going on (SKILL.md, "If the scripts can\'t',
+    '           reach the website"). If it can\'t be allowed, work through the browser.',
   ];
 }
 
