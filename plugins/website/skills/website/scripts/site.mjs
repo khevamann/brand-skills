@@ -12,7 +12,7 @@
 
 import { existsSync, readFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import { parseArgs, out, exitWith, GuardError, SiteError } from './core/cli.mjs';
+import { parseArgs, out, exitWith, GuardError, SiteError, today } from './core/cli.mjs';
 import { detect, findCraftGraphql, checkReach } from './core/detect.mjs';
 import {
   PLATFORMS, loadProject, initProject, addNote, readNotes, projectPaths, writeClaudeMdBlock, ensureTodo, readTodos,
@@ -260,6 +260,28 @@ async function cmdInit(url, flags) {
   );
 }
 
+/** What `start` says about reaching the site: a new block, a known one, or one lifted. */
+function reachLines(reach, { blockedSince, lifted, raisedBefore }) {
+  if (reach.ok && lifted) {
+    return [
+      `Reach:     yes. It was blocked since ${lifted} and is allowed now. Correct what SITE.md says`,
+      '           about it, and redo with the scripts anything that was done in the browser instead.',
+    ];
+  }
+  if (reach.ok) return ['Reach:     yes, the scripts can read the site'];
+  if (raisedBefore) {
+    return [
+      `Reach:     NO since ${blockedSince} (${reach.why}). Already raised with the user: see SITE.md for`,
+      '           what was decided. Work through the browser; ask again only if they bring it up.',
+    ];
+  }
+  return [
+    `Reach:     NO (${reach.why}). The scripts can't read the site from here right now.`,
+    '           Ask the user once how to allow it, then work through the browser meanwhile',
+    '           (SKILL.md, "If the scripts can\'t reach the website").',
+  ];
+}
+
 async function cmdStart(url, flags) {
   const base = baseFolder(flags);
   const here = loadProject(base);
@@ -311,11 +333,17 @@ async function cmdStart(url, flags) {
   ensureFindings(project);
   ensureTodo(project);
   const todos = readTodos(project);
+  // Reach is checked fresh every session and never assumed: access can be granted mid-
+  // conversation, or be blocked for good by an organization's policy. `since` marks
+  // how long a block has lasted, so it is raised with the user once, not every session.
+  const before = site.state?.reach;
   const reach = await checkReach(site.url);
-  recordState(project, 'reach', reach);
+  const blockedSince = reach.ok ? null : before && !before.ok ? before.since ?? before.at?.slice(0, 10) : today();
+  const lifted = reach.ok && before && !before.ok ? before.since ?? before.at?.slice(0, 10) : null;
+  recordState(project, 'reach', { ...reach, ...(blockedSince ? { since: blockedSince } : {}) });
   const next = nextQuestions(project);
   const status = platformStatus(site);
-  const state = site.state ?? {};
+  const state = { ...(site.state ?? {}) };
   const notes = readNotes(project);
   const learningsCount = existsSync(paths.learnings)
     ? (readFileSync(paths.learnings, 'utf8').match(/^## \d{4}-\d{2}-\d{2}/gm) ?? []).length
@@ -334,13 +362,7 @@ async function cmdStart(url, flags) {
     `Learnings:   ${learningsCount} dated entr${learningsCount === 1 ? 'y' : 'ies'} in learnings.md`,
     `Admin guide: ${existsSync(paths.adminGuide) ? 'admin-guide.md' : 'not written yet — write one the first time the admin is explored'}`,
     '',
-    `Reach:     ${reach.ok ? 'yes, the scripts can read the site' : `NO (${reach.why}). The scripts can't read the site from here`}`,
-    ...(reach.ok
-      ? []
-      : [
-          '           Read it through the browser instead (SKILL.md, "If the scripts can\'t reach the',
-          '           website"), and tell the user how to allow it.',
-        ]),
+    ...reachLines(reach, { blockedSince, lifted, raisedBefore: Boolean(before && !before.ok) }),
     `What works here: ${status.summary}`,
     `Guide: ${status.guide}`,
     ...(next

@@ -113,15 +113,37 @@ test('naming a different site from this folder\'s project asks which was meant',
   assert.match(stderr, /worked on before: open that site's own Cowork project/);
 });
 
-test('start says up front when the scripts cannot reach the site, and records it', async () => {
-  const { mkdtempSync: tmp, readFileSync } = await import('node:fs');
+test('reach is checked fresh every session: a new block, a known one, and one that has lifted', async () => {
+  const { mkdtempSync: tmp, readFileSync, writeFileSync } = await import('node:fs');
+  const { createServer } = await import('node:http');
   const { initProject } = await import('../core/project.mjs');
+
+  // Blocked for the first time: say so, and ask once.
   const dir = tmp(join(tmpdir(), 'site-reach-'));
   initProject(dir, { url: 'http://127.0.0.1:9', platform: 'squarespace', confirmedBy: 'user' });
-  const { code, stdout } = await run(['start'], dir);
-  assert.equal(code, 0);
-  assert.match(stdout, /Reach:\s+NO/);
-  assert.match(stdout, /browser/);
+  let r = await run(['start'], dir);
+  assert.equal(r.code, 0);
+  assert.match(r.stdout, /Reach:\s+NO/);
+  assert.match(r.stdout, /ask the user once/i);
+  const first = JSON.parse(readFileSync(join(dir, 'site.json'), 'utf8')).state.reach;
+  assert.equal(first.ok, false);
+  assert.ok(first.since);
+
+  // Still blocked next session: already raised, so don't ask again.
+  r = await run(['start'], dir);
+  assert.match(r.stdout, new RegExp(`NO since ${first.since}`));
+  assert.match(r.stdout, /already raised/i);
+  assert.doesNotMatch(r.stdout, /ask the user once/i);
+
+  // Allowed since: notice the change, so stale notes get corrected.
+  const server = createServer((_, res) => res.end('ok')).listen(0, '127.0.0.1');
+  await new Promise((done) => server.once('listening', done));
   const site = JSON.parse(readFileSync(join(dir, 'site.json'), 'utf8'));
-  assert.equal(site.state.reach.ok, false);
+  site.url = `http://127.0.0.1:${server.address().port}`;
+  writeFileSync(join(dir, 'site.json'), JSON.stringify(site));
+  r = await run(['start'], dir);
+  server.close();
+  assert.match(r.stdout, /Reach:\s+yes/);
+  assert.match(r.stdout, /blocked since/i);
+  assert.match(r.stdout, /SITE\.md/);
 });

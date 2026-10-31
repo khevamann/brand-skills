@@ -1,7 +1,7 @@
 {
   "name": "website",
   "description": "Work on a website built with Craft CMS, WordPress, Shopify, Squarespace or anything else: detect the platform, keep a project folder that remembers between sessions, export and audit content, brief Claude Design, and check how far a change reaches. Read-only: it never changes the site.",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "author": {
     "name": "khevamann"
   },

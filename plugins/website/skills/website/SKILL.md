@@ -37,13 +37,27 @@ Cowork, its sandbox).
   into the user's folder at the end of each piece of work, so nothing is lost. Tell the
   user that freeing disk space fixes it.
 
-**If the scripts can't reach the website.** `$SITE start` checks every session and
-says `Reach: NO` when it can't get through. It often can't: Cowork's sandbox only
-reaches allowed sites. Tell the user in plain words that an Owner of their Claude
-organization needs to allow it: **Organization settings → Capabilities → Code
-execution**, turn on network access, and add the site's domain. Note it in `SITE.md`.
+**If the scripts can't reach the website.** `$SITE start` checks every session, so
+never treat one failure as permanent, and never write it down as a fact. Access can
+change in either direction:
 
-Until then, read the site through the browser. That's the built-in browser or Claude in
+- **Blocked for the first time** (`Reach: NO`). Cowork's sandbox only reaches allowed
+  sites, so ask the user once how to allow it. Cowork may offer to allow the site right
+  in the conversation: ask them to approve it. On a personal plan they can also allow it
+  in their own settings. On a Team or Enterprise plan, only an Owner of their Claude
+  organization can: **Organization settings → Capabilities → Code execution**, turn on
+  network access and add the site's domain. If they aren't the Owner, it may stay
+  blocked for good. That's fine: the browser route below does the same work.
+- **Still blocked** (`NO since <date>`, already raised). Don't ask again unless they
+  bring it up. Work through the browser.
+- **Allowed now after being blocked.** Correct what `SITE.md` says about it. Then redo
+  with the scripts whatever was done in the browser instead, such as the snapshot.
+
+Record it only in `SITE.md`'s "What we can do here", dated, with what was decided:
+"2026-10-30: blocked; the organization controls network access, and the Owner was
+asked." Rewrite that line when it changes.
+
+While it's blocked, read the site through the browser. That's the built-in browser or Claude in
 Chrome, which can reach it even when the sandbox can't.
 
 - **Read pages:** on a tab open at the site, `fetch` each page in the sitemap and parse

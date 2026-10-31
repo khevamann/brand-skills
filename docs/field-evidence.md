@@ -45,6 +45,10 @@ Candidates that have cleared their bar. The maintainer picks from here.
 
 ## Done
 
+### 0.5.1 (2026-10-31)
+
+- **Reach isn't permanent.** R2's sandbox was blocked at first, then allowed once the user approved it in the conversation, but its `SITE.md` still said "cannot reach". `start` now separates three cases: blocked for the first time (ask once), still blocked (already raised, so don't ask again; on an organization account it may never be allowed), and allowed again after a block (correct `SITE.md` and redo the browser work with the scripts). *R2, maintainer.*
+
 ### 0.5.0 (2026-10-31)
 
 - **Bugs fixed** *(R1, checked read-only against R1's API)*:
