@@ -19,13 +19,34 @@ site's admin, and a person publishes them.
 
 ## Setup
 
-### 1. Install the plugin (once)
+### 1. Install the skill (once)
+
+There are two ways in. The marketplace keeps itself up to date, so use it when you can.
+
+**From the marketplace**
 
 1. In Claude Desktop, open **Customize → Plugins → Add → Add marketplace** and enter
    `khevamann/brand-skills`.
 2. Find **website** under **Discover** and install it.
 3. Turn on **Sync automatically** for the marketplace, or use **Check for updates**
    from time to time.
+
+**From a zip file**
+
+Use this when you can't add the marketplace, or someone has sent you the skill as a file.
+
+1. Get `website-skill.zip`. It's attached to the latest release on this repository's
+   **Releases** page, or the person who maintains the skill can send it to you. Don't
+   unzip it.
+2. Check that Claude can run code: **Settings → Capabilities → Code execution and file
+   creation** must be on. On a Team or Enterprise plan, an organization Owner may also
+   need to allow skills.
+3. Open **Customize → Skills**, click **+**, then **Create skill → Upload a skill**, and
+   choose the zip.
+4. Make sure **website** is switched on in your skills list.
+
+A zip install doesn't update itself. To update, download the new zip, delete the old
+skill (**…** next to its switch **→ Delete**), and upload the new one.
 
 ### 2. Make a folder for the site
 
@@ -72,12 +93,19 @@ Say "I'm working on example.com". Claude then:
    SITE.md               what the site is, where things stand, notes from past sessions
    site.json             facts the scripts use
    learnings.md          what worked and what broke
+   TODO.md               things to fix, added as Claude finds them
    platform-findings.md  what this project taught us about the platform itself
    export/  audits/  design/  snapshots/
    ```
+4. **Takes a snapshot of every page.** This takes a few minutes. Meanwhile, it asks you
+   to sign in to your site's admin in the browser.
+5. **Runs a first review** for broken links and leftover placeholder text, adds what it
+   finds to your to-do list, and tells you briefly what turned up.
+6. **Wraps up** with prompts you can use to start later sessions, such as "Let's work
+   through my to-do list" or "Run an SEO check on the site".
 
-Next time, start a new conversation in the same Cowork project. Claude reads `SITE.md`
-and picks up where you left off.
+Next time, start a new conversation in the same Cowork project and say which page you
+want to work on. Claude reads `SITE.md` and picks up where you left off.
 
 If the attached folder already had other files in it, Claude puts the site in its own
 subfolder instead of mixing it in. It's still simplest to give each site an empty
@@ -177,6 +205,20 @@ plugins/website/skills/website/
 ```bash
 node --test 'plugins/website/skills/website/scripts/test/*.test.mjs'
 ```
+
+**Releases.** The `Package skill` workflow runs the tests and builds `website-skill.zip`
+on every push and pull request; the zip is kept with the run as an artifact. When `main`
+has a version in `plugins/website/.claude-plugin/plugin.json` that has no release yet,
+the workflow publishes release `v<version>` with the zip attached. To release, bump the
+version there and in `.claude-plugin/marketplace.json`.
+
+**Field reports.** When someone sends back what happened on a real site (a project
+folder, notes or findings), open Claude Code in this repo and say "review this field
+report". The repo-only skill `.claude/skills/reviewing-field-reports` sorts each item
+into one of three places: change the skill now, wait for evidence from another site, or
+the user's own project. It keeps the tally in
+[`docs/field-evidence.md`](docs/field-evidence.md), and that skill isn't shipped to
+users.
 
 The tests run offline. They pin:
 

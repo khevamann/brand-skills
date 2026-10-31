@@ -15,7 +15,7 @@ import { relative, resolve } from 'node:path';
 import { parseArgs, out, exitWith, GuardError, SiteError } from './core/cli.mjs';
 import { detect, findCraftGraphql } from './core/detect.mjs';
 import {
-  PLATFORMS, loadProject, initProject, addNote, readNotes, projectPaths, writeClaudeMdBlock,
+  PLATFORMS, loadProject, initProject, addNote, readNotes, projectPaths, writeClaudeMdBlock, ensureTodo, readTodos,
   CLAUDE_MD_START, bareHost, resolveProject, newProjectFolder,
 } from './core/project.mjs';
 import { ensureFindings, readFindings, recordFinding, nextQuestions, sendSuggestion, markSuggested, MAINTAINER } from './core/findings.mjs';
@@ -239,6 +239,7 @@ async function cmdInit(url, flags) {
       '  SITE.md       overview and notes — read first every session',
       '  site.json     facts and state the scripts use',
       '  learnings.md  dated log of what worked and what broke',
+      '  TODO.md       things to fix, added as you find them; raised at the start of each session',
       '  CLAUDE.md     points new sessions at SITE.md',
       ...(questions ? [`  platform-findings.md  ${questions} open questions about ${project.site.platformName}, answered as you work`] : []),
       '',
@@ -252,7 +253,8 @@ async function cmdInit(url, flags) {
       'conversations resume it: "This is a website project. Use the website skill: run its start',
       'command before anything else, then read SITE.md."',
       '',
-      'NEXT: fill in "What we can do here" in SITE.md, then carry on with what the user asked for.',
+      'NEXT: the first session (SKILL.md): start the export in the background, ask the user to',
+      'sign in to the admin meanwhile, then audit --links, record SITE.md, and close.',
     ].join('\n'),
   );
 }
@@ -306,6 +308,8 @@ function cmdStart(url, flags) {
   }
 
   ensureFindings(project);
+  ensureTodo(project);
+  const todos = readTodos(project);
   const next = nextQuestions(project);
   const status = platformStatus(site);
   const state = site.state ?? {};
@@ -342,10 +346,16 @@ function cmdStart(url, flags) {
         ]
       : []),
     '',
+    `TO-DO (${todos.length} open in TODO.md${todos.length > 5 ? ', first 5' : ''})`,
+    ...(todos.length ? todos.slice(0, 5).map((t) => `  - ${t}`) : ['  none open']),
+    '',
     `NOTES (${notes.length}${notes.length > 12 ? ', latest 12' : ''})`,
     ...(notes.length ? notes.slice(-12).map((n) => `  ${n}`) : ['  none yet']),
     '',
     'NEXT: read SITE.md in full (and learnings.md before any apply), then carry on.',
+    ...(todos.length
+      ? ['If the user has not said what to work on, mention the open to-dos in a line and offer to start on one.']
+      : []),
   ];
   out(lines.join('\n'));
 }

@@ -9,6 +9,7 @@ stopped**. Nobody should have to keep one long conversation alive.
   SITE.md          overview + notes. Read first, every session.
   site.json        facts and state the scripts use (platform, endpoints, last export…)
   learnings.md     dated log: did / worked / broke / next time
+  TODO.md          things to fix or improve, found as work goes; raised each session
   admin-guide.md   how THIS site's admin actually behaves (written once explored)
   platform-findings.md   what this project taught us about the PLATFORM, for the skill
   export/          the site, exported
@@ -18,8 +19,8 @@ stopped**. Nobody should have to keep one long conversation alive.
   CLAUDE.md        a marked block telling new sessions to read SITE.md
 ```
 
-`site init` creates `SITE.md`, `site.json`, `learnings.md`, `platform-findings.md` and
-the `CLAUDE.md` block. The rest appear as work happens.
+`site init` creates `SITE.md`, `site.json`, `learnings.md`, `TODO.md`,
+`platform-findings.md` and the `CLAUDE.md` block. The rest appear as work happens.
 
 ## SITE.md
 
@@ -56,6 +57,14 @@ Not a note: anything already in `site.json`, a diary of the session, or a secret
   `admin-guide.md`, and SITE.md points there.
 - **Never write passwords, cookies, tokens or 2FA codes** — not in any file. Logins live
   only in the browser. `site note` refuses text that looks like a secret.
+
+## TODO.md
+
+The user's to-do list for the site, shared between them and Claude. Claude adds an item
+as soon as it finds something worth fixing, in any session, without stopping the work in
+hand: `- [ ] YYYY-MM-DD — what is wrong, on which page, where to fix it (how found)`.
+`site start` lists the open items, so the next session can offer them. The user can tick,
+reorder or delete items freely; never rewrite their wording.
 
 ## admin-guide.md
 

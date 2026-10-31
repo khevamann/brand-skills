@@ -5,6 +5,7 @@
 //   SITE.md         overview + dated notes. Read first, every session.
 //   site.json       machine-readable facts and state
 //   learnings.md    dated run log
+//   TODO.md         things to fix or improve, found as work goes; raised each session
 //   admin-guide.md  how this site's admin actually behaves (written once explored)
 //   platform-findings.md  what this project taught us about the platform (see findings.mjs)
 //   export/ audits/ design/ snapshots/
@@ -77,6 +78,7 @@ export function projectPaths(dir) {
     siteJson: join(root, 'site.json'),
     siteMd: join(root, 'SITE.md'),
     learnings: join(root, 'learnings.md'),
+    todo: join(root, 'TODO.md'),
     adminGuide: join(root, 'admin-guide.md'),
     claudeMd: join(root, 'CLAUDE.md'),
     export: join(root, 'export'),
@@ -152,9 +154,24 @@ export function initProject(dir, { url, platform, confirmedBy, detection = null,
 
   if (!existsSync(paths.siteMd)) writeFileSync(paths.siteMd, siteMdTemplate(site));
   if (!existsSync(paths.learnings)) writeFileSync(paths.learnings, LEARNINGS_TEMPLATE);
+  ensureTodo(project);
   ensureFindings(project);
   writeClaudeMdBlock(paths.claudeMd);
   return project;
+}
+
+/** Create TODO.md if it is missing (projects set up before it existed). Never overwrites. */
+export function ensureTodo(project) {
+  if (!existsSync(project.paths.todo)) writeFileSync(project.paths.todo, TODO_TEMPLATE);
+}
+
+/** The open items in TODO.md: unticked checkboxes, without the box. */
+export function readTodos(project) {
+  if (!existsSync(project.paths.todo)) return [];
+  return readFileSync(project.paths.todo, 'utf8')
+    .split('\n')
+    .filter((l) => /^\s*- \[ \] /.test(l))
+    .map((l) => l.replace(/^\s*- \[ \] /, '').trim());
 }
 
 /** Append a dated bullet under SITE.md's Notes heading. */
@@ -250,6 +267,16 @@ ${NOTES_HEADING}
 _No notes yet._
 `;
 }
+
+const TODO_TEMPLATE = `# To-do
+
+Things to fix or improve on this site, found as we work. Claude adds to this list and
+brings it up at the start of each session. Tick items off, reorder them or delete them
+freely.
+
+Item format: \`- [ ] YYYY-MM-DD — what is wrong, on which page, where to fix it (how found)\`
+
+`;
 
 const LEARNINGS_TEMPLATE = `# Learnings
 

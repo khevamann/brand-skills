@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   initProject, loadProject, addNote, readNotes, recordState, writeClaudeMdBlock,
-  CLAUDE_MD_START, CLAUDE_MD_END,
+  ensureTodo, readTodos, CLAUDE_MD_START, CLAUDE_MD_END,
 } from '../core/project.mjs';
 import { SiteError } from '../core/cli.mjs';
 
@@ -17,7 +17,7 @@ const setUp = (dir = fresh()) =>
 
 test('init writes the files a new session reads, and records the origin only', () => {
   const project = setUp();
-  for (const f of ['siteJson', 'siteMd', 'learnings', 'claudeMd']) {
+  for (const f of ['siteJson', 'siteMd', 'learnings', 'todo', 'claudeMd']) {
     assert.ok(existsSync(project.paths[f]), `${f} missing`);
   }
   const loaded = loadProject(project.paths.root);
@@ -82,4 +82,20 @@ test('state paths are stored relative to the project, so the folder can move', (
   assert.equal(site.state.lastExport.dir, 'export');
   assert.equal(site.state.lastExport.pages, 3);
   assert.match(site.state.lastExport.at, /^\d{4}-/);
+});
+
+test('the to-do list counts open items only, and is created for older projects', () => {
+  const project = setUp();
+  assert.deepEqual(readTodos(project), []);
+  writeFileSync(
+    project.paths.todo,
+    readFileSync(project.paths.todo, 'utf8') +
+      '- [ ] 2026-10-30 — Broken link on /about\n- [x] 2026-10-30 — Fixed already\n- [ ] 2026-10-31 — Placeholder copy on /\n',
+  );
+  assert.deepEqual(readTodos(project), ['2026-10-30 — Broken link on /about', '2026-10-31 — Placeholder copy on /']);
+
+  const older = setUp();
+  writeFileSync(older.paths.todo, 'my own list\n');
+  ensureTodo(older);
+  assert.equal(readFileSync(older.paths.todo, 'utf8'), 'my own list\n', 'an existing list is never overwritten');
 });

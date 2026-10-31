@@ -80,7 +80,48 @@ the folder attached to this Cowork project, so ask rather than assume.
   that site's Cowork project. If it's a new site, they should start a new Cowork project
   with its own empty folder. Never mix two sites in one project folder.
 
-After `init`, fill in "What we can do here" in `SITE.md`.
+After `init`, carry straight on with the first session below.
+
+### The first session: set up, snapshot, first review, done
+
+By the end of one short session, the folder is set up, the whole site is snapshotted,
+and what the first review found is on the to-do list. Then it ends. Getting through
+onboarding is the goal: don't work on the findings, tour every feature, or open new
+topics.
+
+**How to talk during it.** Each message is one or two sentences: what is happening now,
+roughly how long it takes, and what you need from them, if anything. Describe the work,
+not the tools. Never mention commands, scripts, helper agents or output.
+
+1. **Set up** (above). Tell them what you found and that this folder now holds
+   everything about the site: "It's a Craft CMS site. I've set up this folder to keep
+   everything about it."
+2. **Start the snapshot without waiting for it.** Run `$SITE export` as a background task
+   or hand it to a helper agent, whichever this app offers, so the conversation can go
+   on. Say: "I'm taking a snapshot of every page now. It takes a few minutes."
+3. **Meanwhile, ask for the one thing only they can do.** "While that runs, please sign
+   in to your site's admin in the browser: [admin address]. Tell me when you're in."
+   Once they are, check you can see the admin's list of pages and note the admin
+   address in `SITE.md`. Explore no further. If they'd rather not sign in now, skip it:
+   it's only needed for making changes. If the Cowork project has no Instructions yet,
+   suggest them now, once.
+4. **When the snapshot is done,** run `$SITE audit --links`. Put each problem worth
+   fixing on the to-do list (`TODO.md`, see below), broken links and leftover placeholder
+   copy first. Then tell them in two or three sentences what turned up, with counts and
+   one example, and that it's all on their to-do list for a future session. If nothing
+   turned up, say so plainly.
+5. **Record it.** Fill in "What we can do here" and "Current state" in `SITE.md`, with
+   the audit's headline.
+6. **Close** with how to come back, including prompts they can copy, and stop:
+
+   > You're set up. Whenever you want to work on the site, start a new conversation in
+   > this project and say what you'd like, for example:
+   > - "Let's work through my to-do list."
+   > - "Let's update the About page."
+   > - "Run an SEO check on the site." (page titles, descriptions, missing image text)
+   > - "Run an accessibility check." (headings, link wording, contrast)
+   >
+   > I'll pick up from the notes in this folder.
 
 ## 2. Keep the project folder current — this is how the next session knows anything
 
@@ -89,6 +130,7 @@ After `init`, fill in "What we can do here" in `SITE.md`.
 | `SITE.md` → **Current state** | Where things stand: last audit's headline, a design change in progress and which step it is on | Whenever it changes |
 | `SITE.md` → **Notes** | Durable facts about this site or these people. Use `$SITE note "<text>"` | As soon as you learn one |
 | `learnings.md` | Dated log: did / worked / broke / next time | After any real piece of work |
+| `TODO.md` | Things to fix or improve: `- [ ] date — what is wrong, on which page, where to fix it (how found)` | As soon as you find one, in any session. Tick it off when it's done |
 | `admin-guide.md` | How *this* site's admin actually behaves: URLs, labels, how drafts work | The first time the admin is explored, then corrected |
 
 Good notes: "Pre-footer is shared by 7 pages — always ask." "Owner wants copy fixes and
@@ -99,6 +141,12 @@ instead of adding contradictions, keep `SITE.md` under about 200 lines, and **ne
 write passwords, cookies or tokens anywhere.** See `references/project-folder.md`.
 
 Say in your reply when you have updated the project notes, and what changed.
+
+**The to-do list is how findings wait for later.** When you notice something worth fixing
+outside the task in hand (a broken link, placeholder copy, a missing image description),
+add it to `TODO.md` and mention it in a line. Don't stop the current work to fix it. Check
+first that it isn't already listed. `$SITE start` shows the open items. If the user
+hasn't said what they want to work on, mention them in a line and offer to start on one.
 
 ## 3. What works on each platform today
 
@@ -134,6 +182,10 @@ $SITE entries --search "..." --status all     # Craft API: find an entry
 
 A page is named by URL, by path (`/about`) or by its id in the export (`about`); on
 Craft's API, by entry id.
+
+There is no command for an SEO or accessibility check. When asked, read the pages in
+`export/`: titles, descriptions, image descriptions (alt text), heading order and link
+wording. Put what you find on the to-do list.
 
 The scripts read the project's site even where its `robots.txt` asks automated tools to
 stay away (staging sites usually do): it is the user's own site, read at their request.
