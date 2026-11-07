@@ -6,8 +6,9 @@ stopped**. Nobody should have to keep one long conversation alive.
 
 ```
 <project folder>/
-  SITE.md          overview + notes. Read first, every session.
-  site.json        facts and state the scripts use (platform, endpoints, last export…)
+  SITE.md          overview, current state and notes. Read first, every session.
+  site.yaml        settings and structured facts: platform, admin address, account,
+                   preferences, how the site is built, setup progress, scripts' state
   learnings.md     dated log: did / worked / broke / next time
   TODO.md          things to fix or improve, found as work goes; raised each session
   admin-guide.md   how THIS site's admin actually behaves (written once explored)
@@ -17,30 +18,34 @@ stopped**. Nobody should have to keep one long conversation alive.
   design/          design system, blocks in use (blocks.md) and on offer (available-blocks.md),
                    briefs, Claude Design results
   snapshots/       copies of a page taken before editing it
+  feedback/        notes and the zip made by `site feedback`, for the skill author
   CLAUDE.md        a marked block telling new sessions to read SITE.md
 ```
 
-`site init` creates `SITE.md`, `site.json`, `learnings.md`, `TODO.md`,
+`site init` creates `SITE.md`, `site.yaml`, `learnings.md`, `TODO.md`,
 `platform-findings.md` and the `CLAUDE.md` block. The rest appear as work happens.
+
+**After an update.** `site setup` on an existing folder brings it up to the current
+layout: a `site.json` from before 0.7.0 moves into `site.yaml` (every command also does
+this on its own), known files in the wrong place move to where the skill looks (never
+over an existing file), missing files are added, and anything else unexpected is listed
+for Claude to ask the user about. Nothing is deleted.
 
 ## SITE.md
 
-Written for a person as much as for Claude. Five sections:
+Written for a person as much as for Claude. Three sections:
 
-- **What this site is** — address, platform and how it was decided (detected or
-  confirmed by the user), the admin address, and the plan or theme where it matters
-  ("Squarespace Core plan — no page drafts", "Shopify, Horizon theme, 14 of 20 theme
-  slots used").
-- **What we can do here** — plainly: which flows work, and which need someone logged in
-  to the admin in the browser.
-- **How the site is built** — written in the first session: the main pages and how they
-  nest, what every page shares (header, navigation, footer, anything repeated across
-  pages), the block types in use (detail in `design/blocks.md`), and where the design
-  system is.
+- **What this site is** — a few plain sentences written during setup: who the site is
+  for, what it offers, which pages matter most.
 - **Current state** — where things stand: last export and audit with their headline
-  numbers, any design change in progress and which step it is on, anything waiting on
-  the user. Rewrite this section rather than appending to it.
+  numbers, any design change in progress and which step it is on, whether the scripts
+  can reach the site (dated, with what was decided), anything waiting on the user.
+  Rewrite this section rather than appending to it.
 - **Notes** — the project's memory. Dated bullets, added with `site note "<text>"`.
+
+Projects set up before 0.7.0 also have "What we can do here" and "How the site is
+built". Move what they hold into `site.yaml` (`access`, `structure`) when you next
+update them, and drop the sections.
 
 ### What makes a good note
 
@@ -52,7 +57,7 @@ A note is a fact a future session would otherwise have to rediscover or ask agai
 - Facts about the setup: "Admin is at /cms, not /admin." "Login lasts about a day."
 - Things that did not work, briefly, with a pointer to `learnings.md`.
 
-Not a note: anything already in `site.json`, a diary of the session, or a secret.
+Not a note: anything already in `site.yaml`, a diary of the session, or a secret.
 
 ### Rules
 
@@ -95,17 +100,34 @@ work reaches them, and add anything else about the platform with `site finding n
 Questions come in the order a session reaches them, and `site findings` shows only the
 current step's. This file is about the platform in general (WordPress, Shopify…), not
 this site. Once enough has built up over a few sessions, Claude suggests, once, sending
-it to Kheva, who maintains the skill and folds it into the bundled guide. That is how the
+it to the skill author, who folds it into the bundled guide. That is how the
 skill learns from its first real use on each platform.
 
-## site.json
+## site.yaml
 
-Machine-readable, maintained by the scripts. Hand-editable fields:
+Settings and structured facts, in YAML so a person can read and edit them. The scripts
+and Claude both write it; comments added by hand are not kept when it is rewritten, so
+lasting rules go in `preferences.notes`. Its sections:
 
-- `adminUrl` — where the user logs in.
-- `audit.placeholders` — extra demo-copy phrases the audit should flag, such as a theme
+- `url`, `platform`, `confirmedBy`, `detection`: what the site is and how that was
+  decided.
+- `adminUrl`: where the user signs in.
+- `account`: `role` (owner, administrator, editor…) and `plan`. Asked during setup.
+- `access`: `browser` (`claude-in-chrome` or `built-in`), `drafts` (whether the site
+  can keep unpublished changes), and `workspaceConfirmed` when the user confirmed this
+  is Cowork although it looked like a plain chat.
+- `preferences`: `publishing` (`ask-first`, the default, or `drafts-only`) and `notes`,
+  the site's standing rules. A preference can make Claude more careful, never less.
+- `structure`: `pages` (main pages and how they nest: `path`, `title`, `children`),
+  `shared` (header, navigation, footer, anything repeated), `styleGuide`. Other keys are
+  fine: a site's structure is its own.
+- `onboarding`: the date each setup step was done, and `skipped` steps with the reason.
+  `site onboarding` shows what is left.
+- `audit.placeholders`: extra demo-copy phrases the audit should flag, such as a theme
   vendor's sample company name.
-- `craft.graphql` — the Craft endpoint, if detection missed it.
+- `craft.graphql`: the Craft endpoint, if detection missed it.
+- `skill.version`: the skill version that last set up the folder.
+- `state`: the scripts' own records (last export, last audit, reach). No need to edit.
 
 ## CLAUDE.md
 

@@ -7,6 +7,7 @@ import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { parseYaml, stringifyYaml } from '../core/yaml.mjs';
 
 const scripts = dirname(dirname(fileURLToPath(import.meta.url)));
 const CLI = join(scripts, 'site.mjs');
@@ -125,7 +126,7 @@ test('reach is checked fresh every session: a new block, a known one, and one th
   assert.equal(r.code, 0);
   assert.match(r.stdout, /Reach:\s+NO/);
   assert.match(r.stdout, /ask the user once/i);
-  const first = JSON.parse(readFileSync(join(dir, 'site.json'), 'utf8')).state.reach;
+  const first = parseYaml(readFileSync(join(dir, 'site.yaml'), 'utf8')).state.reach;
   assert.equal(first.ok, false);
   assert.ok(first.since);
 
@@ -138,9 +139,9 @@ test('reach is checked fresh every session: a new block, a known one, and one th
   // Allowed since: notice the change, so stale notes get corrected.
   const server = createServer((_, res) => res.end('ok')).listen(0, '127.0.0.1');
   await new Promise((done) => server.once('listening', done));
-  const site = JSON.parse(readFileSync(join(dir, 'site.json'), 'utf8'));
+  const site = parseYaml(readFileSync(join(dir, 'site.yaml'), 'utf8'));
   site.url = `http://127.0.0.1:${server.address().port}`;
-  writeFileSync(join(dir, 'site.json'), JSON.stringify(site));
+  writeFileSync(join(dir, 'site.yaml'), stringifyYaml(site));
   r = await run(['start'], dir);
   server.close();
   assert.match(r.stdout, /Reach:\s+yes/);

@@ -53,8 +53,8 @@ test('the walk-through offers one step at a time, and moves on as questions are 
 });
 
 test('the findings file says who to send it to', () => {
-  assert.equal(MAINTAINER, 'Kheva');
-  assert.match(readFileSync(findingsPath(project()), 'utf8'), /suggest sending this file to Kheva, who maintains/);
+  assert.equal(MAINTAINER, 'the skill author');
+  assert.match(readFileSync(findingsPath(project()), 'utf8'), /suggest sending this file to the skill author, who/);
 });
 
 test('sending the findings is suggested rarely: once enough builds up, then only after more', () => {

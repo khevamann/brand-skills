@@ -2,6 +2,7 @@
 // folder from fixture HTML, then the real CLI reads it. These pin the scope gate's
 // decisions, because a wrong "confined to this page" is the expensive mistake.
 import { test } from 'node:test';
+import { parseYaml } from '../core/yaml.mjs';
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
@@ -113,7 +114,7 @@ test('the audit runs offline from the export and is saved to the project', async
   assert.match(stdout, /PLACEHOLDER COPY \(1\)/);
   assert.match(stdout, /lorem ipsum/i);
   assert.equal(readdirSync(join(dir, 'audits')).length, 1);
-  assert.ok(JSON.parse(readFileSync(join(dir, 'site.json'), 'utf8')).state.lastAudit);
+  assert.ok(parseYaml(readFileSync(join(dir, 'site.yaml'), 'utf8')).state.lastAudit);
 });
 
 test('diff reads tagged HTML back into a manifest', async () => {

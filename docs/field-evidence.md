@@ -18,8 +18,11 @@ Already decided. Reviews report evidence that bears on these, but don't reopen t
 |---|---|---|---|---|---|
 | R1 | 2026-10-30 | Craft 5.10 Pro, public GraphQL reads on (dev install) | Digistorm-built school site; the same site as `craft.md`'s worked example | ~3 weeks: ~10 pages redesigned or built as drafts, a site restructure | pre-0.3 (`craft` skill, no project folder) |
 | R2 | 2026-10-31 | Squarespace 7.1, Fluid Engine, plan unconfirmed | Small retail/craft business site, 15 pages | 1 day in Cowork: onboarding review, SEO audit, spacing audit at 10 widths, mobile layout fix, privacy page, footer link fix, a redesign built on a hidden test page | 0.4.0, installed from the zip (`site.json` doesn't record the version) |
+| R3 | 2026-11-07 | Squarespace 7.1, plan unconfirmed | Farm and retreat-centre site, ~245 pages (blog, large events collection, email campaigns) | 2 short sessions: event time (fixed via site time zone), event category, SEO title, event excerpts, read-only site review, newsletter draft in Campaigns. **Onboarding skipped.** Ran in a claude.ai cloud workspace with network off and no attached folder | 0.6.0 or close to it (has the whole-site onboarding and SQ-10) |
 
 ## Open questions for reporters
+
+- **R3:** was this Cowork with a folder attached, or a plain claude.ai chat with a Project? The transcript shows `/home/claude`, `/mnt/skills` and claude.ai Project writes, not an attached folder.
 
 - **R2:** was the user asked before Claude saved the footer link change? It went live on every page, and the footer is on the "always ask first" list.
 - **R1:** who applied the shared pre-footer draft that was "Published 2026-10-14"?
@@ -41,9 +44,24 @@ Candidates that have cleared their bar. The maintainer picks from here.
 
 | Problem | Evidence | Possible answer |
 |---|---|---|
-| When the sandbox can't reach the site, everything the scripts produce had to be rebuilt by hand in the browser | **R1, R2** | 0.5.0 warns at `start` and documents the browser route. Still open: an in-page script that writes the normal export format, so `audit`, `brief` and `scope` work on it |
+| When the sandbox can't reach the site, everything the scripts produce had to be rebuilt by hand in the browser | **R1, R2, R3** (R3 then skipped the work altogether) | 0.5.0 warns at `start` and documents the browser route. Still open: an in-page script that writes the normal export format, so `audit`, `brief` and `scope` work on it |
 
 ## Done
+
+### 0.7.0 (2026-11-07)
+
+- **Setup can't be skipped or worked around** *(R3, maintainer)*:
+  - The description now triggers on "I'm working on <site>", a bare address, "/website setup", "update the website skill" and "/website feedback".
+  - `site setup` checks first: a plain chat or no attached folder is a STOP (exit 4) with the fix; an unreachable site is raised and waited on. `init` runs the same hard checks. SKILL.md: never pipe `setup`/`start` through `head`/`tail`.
+  - The first-session steps are printed as a task list, each with a scripts route and a browser route. Progress is worked out from the files each step leaves, and `start` leads with SETUP NOT FINISHED until it is done. Steps can be put off with a reason.
+  - Sign-in comes right after the project is set up, with the role and plan questions (SQ-1, SQ-2).
+  - The hand-over ends with one visible fix to try now; `scripts/browser/layout-check.js` finds candidates at phone, tablet and desktop widths.
+- **`site.yaml` replaces `site.json`** and takes the structured parts of `SITE.md` (account, access, preferences, structure, setup progress). Old folders migrate on load. `site setup` on an existing folder is the update path: migrate, tidy known files, list unknown ones, record the version, show what's new. *(maintainer decision 2026-10-30)*
+- **`site feedback`** bundles the project's files and session transcripts, redacted, into a zip for the skill author. *(maintainer)*
+- **Safety** *(R3)*: read a field back from the page before Save, never retype because a screenshot lags; Squarespace's category checkbox deletes, Campaigns autosave and only SEND.
+- **Promoted** *(R2, R3)*: Squarespace `/config` redirect and the appended SEO title are now *(seen on 2 sites)*.
+- **Folded in, seen once** *(R3)*: the admin domain needs its own browser approval; bare domain without a certificate; settings that drive what cards and summary blocks show; Campaigns facts; browser-reading pitfalls; images can't be uploaded through the browser tools.
+- The skill no longer names its author: findings and feedback go to "the skill author".
 
 ### 0.5.1 (2026-10-31)
 
@@ -88,7 +106,10 @@ Each needs another independent site with the same problem before it changes the 
 | `blocks` takes over 2 minutes | R1 | Cache it, or say how long it takes |
 | An SEO audit had to be put together by hand (titles, descriptions, social images, alt text, structured data, internal links) | R2 | The SKILL.md note may be enough; watch whether others ask |
 | Without page drafts, a redesign was tested on a hidden page with the whole design in one Code block | R2 | Possibly a "test page" route in the Squarespace guide; the Code block trade-off (no visual editing) needs saying |
-| Checklist answers were learned (SQ-7, SQ-9) but never recorded as findings; they ended up in learnings.md and admin-guide.md | R2 | Watch whether "answer as you see it" is followed elsewhere |
+| Checklist answers were learned (SQ-7, SQ-9) but never recorded as findings; they ended up in learnings.md and admin-guide.md | R2, R3 (SQ-1 and SQ-2 never asked) | 0.7.0 asks SQ-1/SQ-2 at sign-in; watch whether the rest get recorded |
+| The owner wanted a stricter check before every Save on a live site: read the real value, confirm nothing else changed, say old → new | R3 | The read-back is now the default (safety); `preferences.publishing: drafts-only` exists for sites that want stricter |
+| The visible problem was an admin setting, not page content (time zone, a category filter, a card showing the excerpt) | R3 | In the Squarespace guide, seen once; a general SKILL.md note if another platform shows it |
+| The bare domain failed (certificate only covers www) | R3 | `start`/`init` try `www.` when the bare address fails |
 
 ## Site preferences seen
 
@@ -100,6 +121,8 @@ it a named preference.
 
 ## Install and onboarding
 
+- **R3 didn't follow the setup.** It ran in a cloud workspace with network access off and no attached folder, and the first message got a generic reply because the skill didn't load. The browser pane asked separately for the www domain and the `<random>.squarespace.com` admin domain.
+
 - **R2 installed the skill from the zip in Cowork, and it worked.** The skill lived under `skills/synced/<id>/website`, and `init` ran. The upload wasn't rejected for the description's length, and the script path resolved.
 - **R2 ran 0.4.0's onboarding.** The to-do list was used heavily: about 20 items, each with its page and where to fix it. There were no complaints about the first session.
 
@@ -107,4 +130,6 @@ it a named preference.
 
 - Digistorm editor recipes (widget values, palette and theme ids, design rules such as "no dividers on bordered tiles"). These belong in that site's `admin-guide.md`. A second Digistorm site could justify a vendor section in `craft.md`.
 - Test content in the R1 notes. Don't treat it as a rule.
+- R3's site specifics: the time zone fix, event categories and excerpts, the duplicate draft event, the newsletter, the bare-domain certificate. They live in its project notes.
+- BC's permanent UTC-7 and Squarespace's outdated America/Vancouver rules: true today, but it's time-bound and regional. At most one line in the Squarespace guide.
 - R2's site specifics: backup pages, the test page, palette and fonts, people, its title format, the footer link fixes. These are already in its project files.

@@ -27,7 +27,7 @@ written in as defaults, or relaxed safety defaults because one user found them s
    that is already made. Report evidence that bears on it, and leave it there.
 3. **Identify the report.** Give it the next `R<n>` in `docs/field-evidence.md`. Note the
    platform and version, the vendor or theme, how long they worked, and the skill version
-   (from `site.json`, or "pre-0.3" if there's no project folder). Leave out site
+   (from `site.yaml`'s `skill.version`; before 0.7.0 `site.json` didn't record it; "pre-0.3" if there's no project folder). Leave out site
    addresses, names, emails and page copy. Describe the site generically ("Craft 5,
    Digistorm-built school site"). If the site is one an earlier report or a guide's worked
    example already covers, say so. It adds no new-site evidence for anything that

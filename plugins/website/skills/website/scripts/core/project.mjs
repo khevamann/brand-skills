@@ -3,7 +3,8 @@
 // and carries on, so nobody has to keep one long conversation alive.
 //
 //   SITE.md         overview + dated notes. Read first, every session.
-//   site.json       machine-readable facts and state
+//   site.yaml       settings and structured facts: platform, account, preferences,
+//                   how the site is built, setup progress, and the scripts' state
 //   learnings.md    dated run log
 //   TODO.md         things to fix or improve, found as work goes; raised each session
 //   admin-guide.md  how this site's admin actually behaves (written once explored)
@@ -14,10 +15,12 @@
 // Nothing here is ever written to the plugin directory: that is replaced on update.
 // Credentials are never written anywhere.
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import { SiteError, today } from './cli.mjs';
 import { ensureFindings } from './findings.mjs';
+import { parseYaml, stringifyYaml } from './yaml.mjs';
+import { VERSION } from '../version.mjs';
 
 export const PLATFORMS = {
   craft: 'Craft CMS',
@@ -75,7 +78,8 @@ export function projectPaths(dir) {
   const root = resolve(dir);
   return {
     root,
-    siteJson: join(root, 'site.json'),
+    siteYaml: join(root, 'site.yaml'),
+    siteJson: join(root, 'site.json'), // before 0.7.0; moved into site.yaml on load
     siteMd: join(root, 'SITE.md'),
     learnings: join(root, 'learnings.md'),
     todo: join(root, 'TODO.md'),
@@ -88,9 +92,25 @@ export function projectPaths(dir) {
   };
 }
 
-/** The project in `dir`, or null when the folder has not been set up. */
+/**
+ * The project in `dir`, or null when the folder has not been set up. A project from
+ * before 0.7.0 keeps its facts in site.json: they move into site.yaml here, once, so
+ * every command works on either.
+ */
 export function loadProject(dir = '.') {
   const paths = projectPaths(dir);
+  if (existsSync(paths.siteYaml)) {
+    let site;
+    try {
+      site = parseYaml(readFileSync(paths.siteYaml, 'utf8'));
+    } catch (err) {
+      throw new SiteError(
+        `site.yaml can't be read (${err.message}). Fix that line, or ask the user before changing anything else in it.`,
+      );
+    }
+    if (!site?.url || !site?.platform) throw new SiteError('site.yaml needs at least `url` and `platform`.');
+    return { paths, site };
+  }
   if (!existsSync(paths.siteJson)) return null;
   let site;
   try {
@@ -98,11 +118,81 @@ export function loadProject(dir = '.') {
   } catch (err) {
     throw new SiteError(`${paths.siteJson} is not valid JSON: ${err.message}`);
   }
-  return { paths, site };
+  const project = { paths, site: withDefaults(site), migrated: 'site.json' };
+  saveSite(project);
+  rmSync(paths.siteJson);
+  return project;
 }
 
+/** The sections every site.yaml has, filled in with defaults where missing. */
+function withDefaults(site) {
+  return {
+    url: site.url,
+    platform: site.platform,
+    platformName: site.platformName ?? PLATFORMS[site.platform],
+    confirmedBy: site.confirmedBy ?? 'detection',
+    detectedAt: site.detectedAt ?? today(),
+    adminUrl: site.adminUrl ?? null,
+    ...site,
+    account: { role: null, plan: null, ...(site.account ?? {}) },
+    access: { browser: null, drafts: null, ...(site.access ?? {}) },
+    preferences: { ...DEFAULT_PREFERENCES, ...(site.preferences ?? {}) },
+    structure: { pages: [], shared: [], ...(site.structure ?? {}) },
+    onboarding: site.onboarding ?? {},
+    skill: site.skill ?? { version: null },
+    state: site.state ?? {},
+  };
+}
+
+/**
+ * Preferences a site can set. Only these are read by the skill; a site's own standing
+ * rules go in `notes`. The defaults are the careful ones: a preference may make Claude
+ * more careful, never less, unless the skill names a setting for it.
+ */
+export const DEFAULT_PREFERENCES = {
+  // ask-first: before any save that goes live, say old → new and wait for a yes.
+  // drafts-only: never save a live page at all; work on a draft or hidden copy only.
+  publishing: 'ask-first',
+  notes: [],
+};
+
+// The order and comments site.yaml is written with, so it reads top to bottom.
+const KEY_ORDER = [
+  'url', 'platform', 'platformName', 'confirmedBy', 'detectedAt', 'detection', 'adminUrl',
+  'account', 'access', 'preferences', 'structure', 'onboarding',
+];
+const YAML_HEADER = [
+  'site.yaml — settings and structured facts for this website project.',
+  'Claude and the website skill keep it up to date, and you can edit it too. Comments',
+  "you add aren't kept when it's rewritten: put lasting rules under preferences.notes.",
+];
+const YAML_COMMENTS = {
+  account: 'Who is working on the site, and on what plan. Asked during setup.',
+  access: [
+    "What Claude can do here. browser: which browser Claude drives (claude-in-chrome or",
+    'built-in). drafts: whether this site can keep unpublished changes (true/false).',
+  ],
+  preferences: [
+    'How careful to be. publishing: ask-first (the default) or drafts-only.',
+    "notes: this site's standing rules, one per line.",
+  ],
+  structure: [
+    'How the site is built, written during setup: the main pages and how they nest,',
+    'what every page shares (header, navigation, footer…), and where the design files are.',
+  ],
+  onboarding: 'Setup progress: the date each step was done. `site onboarding` shows what is left.',
+  skill: 'The website skill version that last set up this folder.',
+  state: "The scripts' own records. No need to edit.",
+};
+
 export function saveSite(project) {
-  writeFileSync(project.paths.siteJson, JSON.stringify(project.site, null, 2) + '\n');
+  const site = project.site;
+  const ordered = {};
+  for (const key of KEY_ORDER) if (key in site) ordered[key] = site[key];
+  for (const key of Object.keys(site)) if (!(key in ordered) && key !== 'skill' && key !== 'state') ordered[key] = site[key];
+  if ('skill' in site) ordered.skill = site.skill;
+  if ('state' in site) ordered.state = site.state;
+  writeFileSync(project.paths.siteYaml, stringifyYaml(ordered, { header: YAML_HEADER, comments: YAML_COMMENTS }));
 }
 
 /**
@@ -121,7 +211,7 @@ export function recordState(project, key, value) {
 }
 
 /**
- * Set up a project folder. Refuses to overwrite an existing site.json, and never
+ * Set up a project folder. Refuses to overwrite an existing site.yaml, and never
  * touches a CLAUDE.md outside its own marked block.
  */
 export function initProject(dir, { url, platform, confirmedBy, detection = null, extra = {} }) {
@@ -131,33 +221,41 @@ export function initProject(dir, { url, platform, confirmedBy, detection = null,
     );
   }
   const paths = projectPaths(dir);
-  if (existsSync(paths.siteJson)) {
-    throw new SiteError(`This folder is already set up (${paths.siteJson}). Run \`start\` to resume.`);
+  if (existsSync(paths.siteYaml) || existsSync(paths.siteJson)) {
+    throw new SiteError(`This folder is already set up (${paths.root}). Run \`setup\` or \`start\` to resume.`);
   }
   mkdirSync(paths.root, { recursive: true });
 
   const origin = new URL(url).origin;
-  const site = {
+  const site = withDefaults({
     url: origin,
     platform,
     platformName: PLATFORMS[platform],
     confirmedBy,
     detectedAt: today(),
+    adminUrl: null,
     detection: detection
       ? { platform: detection.platform, confidence: detection.confidence, evidence: detection.evidence }
       : null,
     ...extra,
+    onboarding: { project: today() },
+    skill: { version: VERSION },
     state: {},
-  };
+  });
   const project = { paths, site };
   saveSite(project);
 
   if (!existsSync(paths.siteMd)) writeFileSync(paths.siteMd, siteMdTemplate(site));
-  if (!existsSync(paths.learnings)) writeFileSync(paths.learnings, LEARNINGS_TEMPLATE);
+  ensureLearnings(project);
   ensureTodo(project);
   ensureFindings(project);
   writeClaudeMdBlock(paths.claudeMd);
   return project;
+}
+
+/** Create learnings.md if it is missing. Never overwrites. */
+export function ensureLearnings(project) {
+  if (!existsSync(project.paths.learnings)) writeFileSync(project.paths.learnings, LEARNINGS_TEMPLATE);
 }
 
 /** Create TODO.md if it is missing (projects set up before it existed). Never overwrites. */
@@ -247,22 +345,13 @@ export function writeClaudeMdBlock(file) {
 function siteMdTemplate(site) {
   return `# ${new URL(site.url).host}
 
+${site.url} — ${site.platformName}${site.confirmedBy === 'user' ? ' (confirmed by the user)' : ' (detected)'}.
+Settings, the admin address, the account, and how the site is built are in \`site.yaml\`.
+
 ## What this site is
 
-- **Address:** ${site.url}
-- **Platform:** ${site.platformName}${site.confirmedBy === 'user' ? ' (confirmed by the user)' : ' (detected)'}
-- **Admin:** ${site.adminUrl ?? '_not recorded yet_'}
-
-## What we can do here
-
-_Fill in once known: which flows work on this site, and whether applying a change
-needs someone logged in to the admin in the app browser._
-
-## How the site is built
-
-_Filled in during the first session: main pages and how they nest, what every page
-shares (header, navigation, footer, anything repeated), the block types in use
-(design/blocks.md), and the design system (design/system/DESIGN-SYSTEM.md)._
+_Written during setup, in a few plain sentences: who the site is for, what it offers,
+and which pages matter most._
 
 ## Current state
 

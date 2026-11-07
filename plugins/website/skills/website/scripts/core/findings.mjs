@@ -5,8 +5,8 @@
 // works, how pasted text behaves). Nobody has a test site, so the first real project
 // on a platform is the test. Its folder gets a platform-findings.md seeded from that
 // checklist; the agent answers questions as it reaches them and records anything
-// else it learns about the platform. The file then goes back to Kheva, who maintains
-// the skill and folds the answers into the guide — see docs/folding-in-findings.md.
+// else it learns about the platform. The file then goes back to the skill author, who
+// maintains the skill and folds the answers into the guide — see docs/folding-in-findings.md.
 //
 // Findings are about the platform in general. Facts about one site belong in its
 // SITE.md and admin-guide.md instead.
@@ -20,7 +20,7 @@ import { recordState } from './project.mjs';
 const GUIDES = fileURLToPath(new URL('../../references/platforms/', import.meta.url));
 
 /** Who maintains the skill, and so who findings files go back to. */
-export const MAINTAINER = 'Kheva';
+export const MAINTAINER = 'the skill author';
 const CHECKLIST_HEADING = '## First-time checklist';
 const OTHER_HEADING = '## Other findings';
 
@@ -92,8 +92,8 @@ function template(project, checklist) {
     'which links and buttons do what. They are not about this one site (that goes in SITE.md',
     'and admin-guide.md).',
     '',
-    `Once enough is here, Claude will suggest sending this file to ${MAINTAINER}, who maintains`,
-    `the website skill. ${MAINTAINER} folds the answers into the skill, so the next`,
+    `Once enough is here, Claude will suggest sending this file to ${MAINTAINER}, who`,
+    'folds the answers into the website skill (or use "/website feedback"), so the next',
     `${site.platformName} site starts from facts instead of guesses. It holds nothing private`,
     'about your site beyond its address.',
     '',

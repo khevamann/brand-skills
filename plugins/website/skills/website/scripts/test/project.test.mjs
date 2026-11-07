@@ -17,7 +17,7 @@ const setUp = (dir = fresh()) =>
 
 test('init writes the files a new session reads, and records the origin only', () => {
   const project = setUp();
-  for (const f of ['siteJson', 'siteMd', 'learnings', 'todo', 'claudeMd']) {
+  for (const f of ['siteYaml', 'siteMd', 'learnings', 'todo', 'claudeMd']) {
     assert.ok(existsSync(project.paths[f]), `${f} missing`);
   }
   const loaded = loadProject(project.paths.root);
@@ -25,6 +25,8 @@ test('init writes the files a new session reads, and records the origin only', (
   assert.equal(loaded.site.platform, 'shopify');
   assert.equal(loaded.site.confirmedBy, 'user');
   assert.match(readFileSync(project.paths.siteMd, 'utf8'), /Shopify \(confirmed by the user\)/);
+  assert.equal(loaded.site.preferences.publishing, 'ask-first');
+  assert.ok(loaded.site.skill.version);
 });
 
 test('init refuses an unknown platform and an already set-up folder', () => {
@@ -33,7 +35,7 @@ test('init refuses an unknown platform and an already set-up folder', () => {
   assert.throws(() => setUp(project.paths.root), /already set up/);
 });
 
-test('a folder with no site.json is not a project', () => {
+test('a folder with no site.yaml or site.json is not a project', () => {
   assert.equal(loadProject(fresh()), null);
 });
 

@@ -19,139 +19,108 @@ site's admin, and a person publishes them.
 
 ## Getting someone started
 
-Send this email with `website-skill.zip` from the
-[latest release](https://github.com/khevamann/brand-skills/releases/latest), downloaded
-from its **Assets**. Don't use "Source code (zip)".
+Download `website-skill.zip` from the
+[latest release](https://github.com/khevamann/brand-skills/releases/latest), under its
+**Assets** (not "Source code (zip)"), and send it with this email. The same steps live
+in the skill as [`references/getting-set-up.md`](plugins/website/skills/website/references/getting-set-up.md),
+so Claude can walk them through any step that goes wrong.
 
 > **Subject:** Getting set up to work on your website with Claude
 >
-> Hi! Here's how to get set up. It takes about five minutes, and then Claude walks you
-> through the rest.
+> Hi! Here's how to get set up. Once these steps are done, Claude gets to know your
+> site with you.
 >
-> 1. **Install the skill.** In Claude, open **Customize → Skills**, click **+**, then
->    **Create skill → Upload a skill**, and choose the attached `website-skill.zip`.
->    Don't unzip it first. Make sure **website** is switched on.
-> 2. **Make an empty folder** on your computer for the site, for example "Acme website".
-> 3. **Create a project in Cowork** (for example "Acme Website") and attach that folder.
->    You don't need to fill in a description or instructions.
-> 4. **In that project, start a new chat** and say: "I'm working on acme.com" (your
->    site's address).
+> **You'll need:** the Claude desktop app with Cowork, your website's address, your login
+> for your website's editor, and the attached `website-skill.zip` (don't unzip it).
 >
-> Claude takes it from there. It asks you to let it read your site, and then to sign in
-> to your site's editor in the browser. While you do that, it takes a snapshot of every
-> page and checks for problems. Then it goes over what it found, captures your colours,
-> fonts and building blocks, and finishes with some example requests to try. The first
-> session takes about 20 minutes.
+> 1. **Let Claude run code.** Open **Settings → Capabilities** and turn on **Code
+>    execution and file creation**.
+> 2. **Let Claude reach your website.** On the same page, allow network access for your
+>    site's address (for example `acme.com`). On a Team or Enterprise plan, ask whoever
+>    manages Claude for your organization to allow it for you. If you can't, carry on:
+>    Claude can work through the browser instead.
+> 3. **Install the skill.** Open **Customize → Skills**, click **+**, then **Create skill
+>    → Upload a skill**, and choose `website-skill.zip`. Check that **website** is in the
+>    list with its switch on.
+> 4. **Make an empty folder** on your computer for this website, for example
+>    "Documents/Websites/Acme website".
+> 5. **Make a Cowork project** for the site (for example "Acme Website") and **attach that
+>    folder** to it. It needs no description or instructions.
+> 6. **Have a browser ready.** If you use Chrome, install **Claude in Chrome**, so Claude
+>    can use the Chrome where you're already signed in. Otherwise Claude uses the app's
+>    built-in browser, and asks you to allow your site the first time.
+> 7. **Start.** In that project, start a new chat and type: **/website setup acme.com**
+>    (your site's address).
 >
-> After that, **always start new chats inside that same project.** That's how Claude
-> remembers your site. Paste in one of the example requests, or ask for whatever you
-> need.
+> Claude checks everything first and tells you if any step above needs fixing. Then it
+> asks you to sign in to your site's editor in the browser (you sign in yourself; Claude
+> never sees your password). While you watch, it captures your whole site: every page, a
+> check for problems on phones and desktops, how your editor works, and your colours,
+> fonts and building blocks. Nothing on your site is changed. It finishes with one fix
+> to try, as a test that everything works.
+>
+> **Afterwards:** always start new chats inside that same Cowork project. That's how
+> Claude remembers your site.
+>
+> - **When I send you a new version,** delete the old **website** skill in **Customize →
+>   Skills** (**…** → **Delete**), upload the new zip as in step 3, then say
+>   **/website setup** in your site's project. Claude brings your folder up to date.
+> - **To send me feedback,** say **/website feedback**. Claude puts what it learned and
+>   your conversations into one file you can send back.
 
-If Claude can't upload the skill, **Settings → Capabilities → Code execution and file
-creation** is probably off. On a Team or Enterprise plan, an Owner may also need to allow
-skills, and to allow Claude to reach the site's address.
+## Setup in detail
 
-## Setup
+The email above is the whole setup. Details for the person maintaining it:
 
-### 1. Install the skill (once)
+- **Marketplace install** (keeps itself up to date): in Claude Desktop, **Customize →
+  Plugins → Add → Add marketplace**, enter `khevamann/brand-skills`, install
+  **website**, and turn on **Sync automatically**. After an update, say
+  **/website setup** in each site's project.
+- **A zip install doesn't update itself.** Download the new zip, delete the old skill,
+  upload the new one, then **/website setup** in each project. Setup moves an older
+  folder to the current layout (a `site.json` becomes `site.yaml`), adds anything
+  missing, lists files it doesn't recognise without touching them, and finishes any
+  setup step the folder is missing.
+- **One folder per website, one Cowork project per folder.** Folders can live anywhere
+  and nest however the user likes; the skill never touches anything outside the site's
+  own folder. If the attached folder already holds other files, Claude puts the site in
+  its own subfolder.
+- **Setup stops early** when it isn't in Cowork, when no folder is attached, or when
+  Node.js can't run, and says what to fix. If the site can't be reached, it asks the user
+  to allow it before going on, and uses the browser only if it can't be allowed.
 
-There are two ways in. The marketplace keeps itself up to date, so use it when you can.
+### What the first session does
 
-**From the marketplace**
+1. **Checks the setup:** Cowork, the attached folder, access to the site, a browser.
+2. **Confirms the folder and that the site is new**, and the platform (detected, or
+   asked: WordPress · Shopify · Craft CMS · Squarespace · Other).
+3. **Has the user sign in** to the site's editor in the browser, and asks their role
+   and plan.
+4. **Snapshots and reviews every page**, in the background.
+5. **Looks through the editor** without saving: every block and section it offers, and
+   how drafts and publishing work.
+6. **Checks the main pages** at phone, tablet and desktop widths for visible problems.
+7. **Captures the design system** and the blocks the pages use.
+8. **Writes down how the site is built** in `site.yaml`.
+9. **Hands over** with one visible fix to try now, and prompts for later.
 
-1. In Claude Desktop, open **Customize → Plugins → Add → Add marketplace** and enter
-   `khevamann/brand-skills`.
-2. Find **website** under **Discover** and install it.
-3. Turn on **Sync automatically** for the marketplace, or use **Check for updates**
-   from time to time.
-
-**From a zip file**
-
-Use this when you can't add the marketplace, or someone has sent you the skill as a file.
-
-1. Get `website-skill.zip`. It's attached to the latest release on this repository's
-   **Releases** page, under **Assets**, or the person who maintains the skill can send
-   it to you. Don't unzip it, and don't use **Source code (zip)**. That is the whole
-   repository, which Claude rejects with "a skill cannot contain a plugin manifest".
-2. Check that Claude can run code: **Settings → Capabilities → Code execution and file
-   creation** must be on. On a Team or Enterprise plan, an organization Owner may also
-   need to allow skills.
-3. Open **Customize → Skills**, click **+**, then **Create skill → Upload a skill**, and
-   choose the zip.
-4. Make sure **website** is switched on in your skills list.
-
-A zip install doesn't update itself. To update, download the new zip, delete the old
-skill (**…** next to its switch **→ Delete**), and upload the new one.
-
-### 2. Make a folder for the site
-
-**One folder per website.** Start with a new, empty folder for the site you're working
-on, for example `Acme website`. Everything Claude produces and learns about that site
-goes in it.
-
-If you look after more than one site, give each its own folder. Where those folders
-live is up to you. You can keep them side by side under a parent folder, or anywhere
-else that suits you:
+The steps are Claude's task list for the session, and `site start` lists any that are
+still missing in later sessions, so an interrupted setup gets finished. The folder ends
+up as:
 
 ```
-Websites/                  ← yours to organise; the skill never touches it
-  Acme website/            ← one site
-  Kirby School website/    ← another site
-  Clients/Bakery website/  ← nest them however you like
+SITE.md               what the site is, where things stand, notes from past sessions
+site.yaml             settings: admin address, account, preferences, how the site is built
+learnings.md          what worked and what broke
+TODO.md               things to fix, added as Claude finds them
+admin-guide.md        how this site's editor works
+platform-findings.md  what this project taught us about the platform itself
+export/  audits/  design/  snapshots/  feedback/
 ```
 
-The skill only works inside a site's own folder. It never creates, moves or tidies the
-folders around it.
-
-### 3. Create a Cowork project for the site
-
-In **Claude Cowork**, create a project for the site and attach **that site's folder**.
-It needs no description or instructions. Use one Cowork project per site, each with
-that site's folder.
-
-### 4. Start working
-
-Say "I'm working on example.com". Claude then:
-
-1. **Checks it's a new site.** It asks whether this is the first time you've worked on
-   this site with Claude. If you have before, it asks you to open that earlier project
-   instead, so notes and learnings stay in one place.
-2. **Works out the platform** (or asks, offering WordPress · Shopify · Craft CMS ·
-   Squarespace · Other).
-3. **Sets up the folder:**
-
-   ```
-   SITE.md               what the site is, where things stand, notes from past sessions
-   site.json             facts the scripts use
-   learnings.md          what worked and what broke
-   TODO.md               things to fix, added as Claude finds them
-   platform-findings.md  what this project taught us about the platform itself
-   export/  audits/  design/  snapshots/
-   ```
-4. **Makes sure it can read the site.** If Claude isn't allowed to reach it yet, it asks
-   you to allow it before going on.
-5. **Takes a snapshot of every page and checks it for problems**, in the background.
-   Meanwhile, it asks you to sign in to your site's editor in the browser, and notes
-   what the editor can add and how it works, without changing anything.
-6. **Goes over what it found** and adds problems to your to-do list. Meanwhile, it
-   captures the design system (colours, fonts, styles) and the building blocks your
-   pages use.
-7. **Hands over** with what you can do together and prompts to paste into a new chat in
-   the same project, such as "Redesign the About page with a photo carousel at the top"
-   or "Create a new page for upcoming events".
-
-Everything is saved in the folder as it goes, so there's nothing for you to save.
-
-Next time, start a new conversation in the same Cowork project and say which page you
-want to work on. Claude reads `SITE.md` and picks up where you left off.
-
-If the attached folder already had other files in it, Claude puts the site in its own
-subfolder instead of mixing it in. It's still simplest to give each site an empty
-folder of its own.
-
-When a change needs the site's admin, Claude works in a browser where you are logged in:
-Claude in Chrome (your own Chrome, with your saved logins) or Claude Desktop's browser.
-You log in yourself; Claude never asks for or stores passwords.
+When a change needs the site's admin, Claude works in a browser where the user is logged
+in: Claude in Chrome (their own Chrome, with their saved logins) or Claude Desktop's
+browser. The user logs in themselves; Claude never asks for or stores passwords.
 
 ## How the skill finishes itself
 
@@ -162,7 +131,7 @@ button publishes or whether an admin link works. Claude works through them step 
 as the real work reaches them, asking the user only what it can't see for itself, and
 records the answers in `platform-findings.md`.
 
-Claude asks the user to send that file to Kheva, who maintains the skill and folds it
+Claude asks the user to send that file to the skill author, who folds it
 into the guide ([how](docs/folding-in-findings.md)). The next site on that platform
 then starts from facts.
 
@@ -217,7 +186,8 @@ Nothing beyond a single page is applied without a person deciding the scope.
 
 In Claude Code, the same marketplace works with `/plugin marketplace add
 khevamann/brand-skills` and `/plugin install website@brand-skills`. claude.ai chat
-can't reach websites from its sandbox, so it isn't supported.
+can't keep a project folder or reach websites from its sandbox, so it isn't supported:
+setup stops there and explains how to move to Cowork.
 
 ## Read-only, three ways
 
@@ -234,9 +204,12 @@ On Craft, nothing can be written:
 ```
 plugins/website/skills/website/
   SKILL.md                     router: resume → identify → platform guide → flows
-  references/                  project folder, design hand-off, one guide per platform
+  references/                  getting set up, project folder, design hand-off, one guide per platform
   scripts/site.mjs             the one CLI
-  scripts/core/                detection, project folder, audit, scope, design tokens
+  scripts/version.mjs          the version (kept equal to plugin.json) and what's new in it
+  scripts/core/                detection, project folder (site.yaml), setup checks and
+                               progress, audit, scope, design tokens, feedback bundle
+  scripts/browser/             scripts Claude runs inside a browser tab (layout check)
   scripts/adapters/craft/      Craft GraphQL: client, guard, page walking, commands
 ```
 
@@ -248,10 +221,12 @@ node --test 'plugins/website/skills/website/scripts/test/*.test.mjs'
 on every push and pull request; the zip is kept with the run as an artifact. When `main`
 has a version in `plugins/website/.claude-plugin/plugin.json` that has no release yet,
 the workflow publishes release `v<version>` with the zip attached. To release, bump the
-version there and in `.claude-plugin/marketplace.json`.
+version there, in `.claude-plugin/marketplace.json` and in `scripts/version.mjs` (a test
+checks they match), and update `WHATS_NEW` in `version.mjs`: `/website setup` shows it to
+people updating.
 
-**Field reports.** When someone sends back what happened on a real site (a project
-folder, notes or findings), open Claude Code in this repo and say "review this field
+**Field reports.** When someone sends back what happened on a real site (the zip from
+`/website feedback`, a project folder, notes or findings), open Claude Code in this repo and say "review this field
 report". The repo-only skill `.claude/skills/reviewing-field-reports` sorts each item
 into one of three places: change the skill now, wait for evidence from another site, or
 the user's own project. It keeps the tally in

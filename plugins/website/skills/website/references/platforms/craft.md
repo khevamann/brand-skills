@@ -6,7 +6,7 @@ The Craft adapter reads over Craft's **public GraphQL schema**, with no token. `
 detect` probes the usual endpoints (`/api`, `/actions/graphql/api`,
 `/admin/actions/graphql/api`) on the site and on `cms.` variants of its host, because
 headless Craft often serves the front end and the CMS from different hosts. The endpoint
-found is stored in the project's `site.json` as `craft.graphql`.
+found is stored in the project's `site.yaml` as `craft.graphql`.
 
 **If no public schema answers**, the scripts read the site from the outside instead, as
 on any other platform (`references/platforms/other.md`). Headless Craft front ends often
@@ -113,7 +113,7 @@ text field and nothing else.
   not work there.
 - **Digistorm's demo copy** — "Digistorm School" — is left behind on new sites. Setting
   up a project for a Digistorm-hosted site adds it to the audit's placeholder list in
-  `site.json` (`audit.placeholders`); add other sites' demo names there the same way.
+  `site.yaml` (`audit.placeholders`); add other sites' demo names there the same way.
 - **The public schema is enabled and read-only** — 208 entries readable with no token,
   and `ping` is the only mutation. Verified with no `Authorization` header at all.
 - **Disabled entries and drafts are publicly readable.** `status: null` and

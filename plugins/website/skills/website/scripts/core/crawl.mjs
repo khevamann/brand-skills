@@ -10,7 +10,7 @@
 import { SiteError, NETWORK_HINT } from './cli.mjs';
 import { parse, findAll } from './html.mjs';
 
-export const UA = 'Mozilla/5.0 (compatible; website-skill/0.3; +https://github.com/khevamann/brand-skills)';
+export const UA = 'Mozilla/5.0 (compatible; website-skill)';
 
 const NOT_A_PAGE = /\.(pdf|jpe?g|png|gif|webp|avif|svg|ico|css|js|json|xml|txt|zip|mp4|mp3|mov|docx?|xlsx?|pptx?|md|rss|atom)(\?|$)/i;
 

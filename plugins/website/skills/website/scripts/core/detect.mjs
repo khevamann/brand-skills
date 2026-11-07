@@ -10,7 +10,7 @@
 import { SiteError, NETWORK_HINT } from './cli.mjs';
 import { decodeEntities, cleanText } from './html.mjs';
 
-const UA = 'Mozilla/5.0 (compatible; website-skill/0.2; +https://github.com/khevamann/brand-skills)';
+const UA = 'Mozilla/5.0 (compatible; website-skill)';
 
 /** The four platforms with dedicated support, plus the "other" fallback. */
 export const SUPPORTED = ['craft', 'wordpress', 'shopify', 'squarespace'];

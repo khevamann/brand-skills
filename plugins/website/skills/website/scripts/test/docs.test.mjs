@@ -79,8 +79,30 @@ test('SKILL.md walks the user through findings and names who they go to', () => 
   assert.match(skill, /\$SITE findings/);
   assert.match(skill, /one at a time/);
   assert.match(skill, /never turn it into a survey|Never show them the checklist/);
-  assert.match(skill, /sends the findings to Kheva happens rarely, never per session/);
+  assert.match(skill, /sends the findings to the skill author happens rarely, never per session/);
   assert.match(skill, /\$SITE findings --told/);
+});
+
+test('setup comes first: checks, sign-in, the steps as a task list, and a visible fix at the end', () => {
+  const first = skill.slice(skill.indexOf('### The first session'), skill.indexOf('## 2.'));
+  const order = ['Check the setup', 'Confirm the folder', 'Open the browser and have them sign in', 'Snapshot and review', 'look through the editor', 'visible problems', 'Capture the design', 'how the site is built', 'Hand over'];
+  let at = -1;
+  for (const step of order) {
+    const i = first.indexOf(step);
+    assert.ok(i > at, `"${step}" missing or out of order`);
+    at = i;
+  }
+  assert.match(first, /task list/);
+  assert.match(first, /Never pick an SEO title, image descriptions or a broken link/);
+  assert.match(skill, /If a check says STOP, stop/);
+  assert.match(skill, /Never pipe `setup` or `start` through `head` or `tail`/);
+  assert.match(skill, /Being blocked is never\s+a reason to skip a step/);
+});
+
+test('the skill names no person, only the skill author', () => {
+  for (const file of [join(skillDir, 'SKILL.md'), join(skillDir, 'references', 'project-folder.md'), join(scripts, 'core', 'findings.mjs')]) {
+    assert.doesNotMatch(readFileSync(file, 'utf8'), /kheva/i, file);
+  }
 });
 
 test('every reference file SKILL.md names exists', () => {

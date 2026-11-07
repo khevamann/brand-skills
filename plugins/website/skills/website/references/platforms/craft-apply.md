@@ -48,7 +48,7 @@ control panel, that file records what it really does, and it overrides this guid
 
 ## Control panel
 
-Usually the CMS host plus `/admin` — the CMS host is the one in `site.json`'s
+Usually the CMS host plus `/admin` — the CMS host is the one in `site.yaml`'s
 `craft.graphql`. The control-panel path can be renamed, so if `/admin` is not a login
 page, ask the user what address they log in at, and record it in `SITE.md`.
 
