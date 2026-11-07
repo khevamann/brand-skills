@@ -32,14 +32,14 @@ test('the version matches plugin.json', () => {
 
 test('an old site.json moves into site.yaml, keeping every fact', () => {
   const dir = fresh();
-  const old = { url: 'https://old.example', platform: 'craft', platformName: 'Craft CMS', confirmedBy: 'user', craft: { graphql: 'https://old.example/api' }, audit: { placeholders: ['Demo School'] }, state: { lastExport: { pages: 3 } } };
+  const old = { url: 'https://old.example', platform: 'craft', platformName: 'Craft CMS', confirmedBy: 'user', craft: { graphql: 'https://old.example/api' }, audit: { placeholders: ['Demo Company'] }, state: { lastExport: { pages: 3 } } };
   writeFileSync(join(dir, 'site.json'), JSON.stringify(old));
   const project = loadProject(dir);
   assert.equal(project.migrated, 'site.json');
   assert.ok(!existsSync(join(dir, 'site.json')));
   const site = parseYaml(readFileSync(join(dir, 'site.yaml'), 'utf8'));
   assert.equal(site.craft.graphql, 'https://old.example/api');
-  assert.deepEqual(site.audit.placeholders, ['Demo School']);
+  assert.deepEqual(site.audit.placeholders, ['Demo Company']);
   assert.equal(site.state.lastExport.pages, 3);
   assert.equal(site.preferences.publishing, 'ask-first');
   assert.equal(loadProject(dir).migrated, undefined, 'migrates once');

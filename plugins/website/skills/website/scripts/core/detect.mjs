@@ -180,8 +180,8 @@ async function probeJson(url, check, { method = 'GET', body: payload } = {}) {
 /**
  * Hosts that might serve a headless CMS for this front end: `cms.` variants of the
  * host, and any other host referenced in the page whose name says "cms". The
- * pattern `<site>.example.com` → `<site>.cms.example.com` is how Digistorm and
- * others split front end from CMS.
+ * pattern `<site>.example.com` → `<site>.cms.example.com` is how some agencies split
+ * front end from CMS.
  */
 export function candidateCmsHosts(pageUrl, html = '') {
   const host = new URL(pageUrl).host;

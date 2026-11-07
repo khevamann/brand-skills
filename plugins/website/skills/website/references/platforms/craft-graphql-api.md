@@ -14,8 +14,8 @@ Content-Type: application/json
 ```
 
 No `Authorization` header: the adapter only uses a public schema that is readable
-anonymously. Where the endpoint lives varies: `/api` is common, and on the Digistorm
-site it also answers under the control-panel trigger at `/admin/actions/graphql/api`,
+anonymously. Where the endpoint lives varies: `/api` is common, and on one agency-built
+site it also answered under the control-panel trigger at `/admin/actions/graphql/api`,
 while the commonly documented `/actions/graphql/api` does not. `site detect` tries
 each.
 
@@ -73,7 +73,7 @@ the section but the mutation keeps it. Guessing the wrong form gets you Craft's
 opaque "Something went wrong" error, so read the name off the data instead:
 
 ```graphql
-{ entry(id: 177) { __typename } }
+{ entry(id: 101) { __typename } }
 ```
 
 To read custom fields across mixed types, use inline fragments:

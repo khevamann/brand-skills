@@ -1,27 +1,28 @@
 # Getting set up
 
 For the person setting up, in plain steps. When a setup check fails, read them the step
-that fixes it, in your own words, one step at a time. The README carries the same steps
-in the email sent with the skill.
+that fixes it, in your own words, one step at a time. The skill's README carries the
+same steps.
 
 ## What you need
 
 - The **Claude desktop app**, signed in, with **Cowork**.
-- The **address of your website** (for example `acme.com`), and a way to **sign in to
+- The **address of your website** (for example `example.com`), and a way to **sign in to
   its editor**: your Squarespace, WordPress, Shopify or Craft login.
-- The file **`website-skill.zip`**. Don't unzip it.
 
 ## 1. Let Claude run code
 
 Open **Settings → Capabilities** and turn on **Code execution and file creation**.
 
 ✓ The switch is on. On a Team or Enterprise plan, if you can't change it, ask whoever
-manages Claude for your organization (an Owner) to turn it on, and to allow skills.
+manages Claude for your organization (an Owner) to turn it on. They may also need to
+allow you to add plugins: **Organization settings → Plugins & skills → Policy → User-created
+skills**.
 
 ## 2. Let Claude reach your website
 
 On the same Capabilities page, allow network access for your website's address, for
-example `acme.com`. On a Team or Enterprise plan only an Owner can do this, under
+example `example.com`. On a Team or Enterprise plan only an Owner can do this, under
 **Organization settings → Capabilities → Code execution**: turn on network access and
 add the site's address.
 
@@ -31,10 +32,18 @@ slowly.
 
 ## 3. Install the skill
 
-Open **Customize → Skills**, click **+**, then **Create skill → Upload a skill**, and
-choose `website-skill.zip`.
+1. Open **Customize** in the sidebar, then **Plugins**.
+2. Choose **Add marketplace** (it may be under **Add**), and enter
+   `khevamann/brand-skills`.
+3. Find **website** in the list and click **Install**.
+4. Turn on **Sync automatically** for the brand-skills marketplace, so you always have
+   the latest version.
 
-✓ **website** is in your list of skills, and its switch is on.
+✓ **website** shows as installed under **Customize → Plugins**.
+
+**If you were sent `website-skill.zip` instead:** open **Customize → Skills**, click
+**+**, then **Create skill → Upload a skill**, and choose the zip without unzipping it.
+✓ **website** is in your list of skills, with its switch on.
 
 ## 4. Make a folder for the site
 
@@ -65,9 +74,9 @@ Claude works in your site's editor through a browser:
 
 In the Cowork project, **start a new chat** and type:
 
-> /website setup acme.com
+> Set up the website skill for example.com
 
-(or "Set up the website skill for acme.com"). Then follow Claude:
+(or `/website setup example.com`). Then follow Claude:
 
 1. **It checks everything first** and tells you if something above needs fixing.
 2. **It confirms the folder and the site**, and asks what your site is built on if it
@@ -84,11 +93,13 @@ In the Cowork project, **start a new chat** and type:
 
 - **Always start new chats inside that same Cowork project.** That's how Claude
   remembers your site. Just say what you'd like to do.
-- **When there's a new version of the skill**, go to **Customize → Skills**, delete the
-  old **website** skill (**…** next to its switch → **Delete**), and upload the new zip as
-  in step 3. Then, in your site's project, say "**/website setup**". Claude brings your
-  folder up to date and finishes anything new.
-- **To send feedback**, say "**/website feedback**". Claude bundles what it has learned
+- **When there's a new version of the skill**, it arrives by itself if **Sync
+  automatically** is on (or choose **Check for updates** on the marketplace). If you
+  installed from a zip, delete the old **website** skill in **Customize → Skills** and
+  upload the new zip. Then, in your site's project, say "**Update the website skill**".
+  Claude brings your folder up to date and finishes anything new.
+- **To send feedback**, say "**Send feedback on the website skill**" (or
+  `/website feedback`). Claude bundles what it has learned
   about your site and your conversations into one file for you to send to the skill
   author. You can open it to check first.
 
@@ -99,5 +110,5 @@ In the Cowork project, **start a new chat** and type:
 | Claude says this isn't a Cowork project, or there's no folder | Do steps 4 and 5, then start a new chat in that project |
 | Claude can't reach your site | Do step 2, or let Claude carry on through the browser |
 | Claude has no browser | Do step 6 |
-| You can't upload the skill | Step 1 is probably off |
-| Claude doesn't seem to know the skill | Check the **website** switch in step 3, and type "/website setup" |
+| You can't add the marketplace or upload the skill | Step 1 is probably off, or your organization hasn't allowed it |
+| Claude doesn't seem to know the skill | Check step 3, then say "Set up the website skill" |

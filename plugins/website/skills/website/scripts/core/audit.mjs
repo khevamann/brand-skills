@@ -22,7 +22,7 @@ const PLACEHOLDER = [
 ];
 
 /**
- * Site-specific demo copy, e.g. the theme vendor's sample school name. Kept in the
+ * Site-specific demo copy, e.g. the theme vendor's sample company name. Kept in the
  * project's site.json (`audit.placeholders`) because it differs per site.
  */
 function placeholderPatterns(extra = []) {

@@ -3,7 +3,7 @@
 // model down a dead end. Both are caught here.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { COMMANDS as CRAFT_COMMANDS } from '../adapters/craft/cli.mjs';
@@ -140,7 +140,22 @@ test('untested procedures are labelled as such', () => {
 });
 
 test('nothing in the skill is tied to one particular site', () => {
-  for (const file of [join(scripts, 'site.mjs'), join(scripts, 'adapters', 'craft', 'client.mjs'), join(skillDir, 'SKILL.md')]) {
-    assert.doesNotMatch(readFileSync(file, 'utf8'), /ks-us-ca-1849|digistormhosting/i, file);
+  // The skill is published. Every web address in what ships must be a platform's own,
+  // or an example: never a real user's site, admin or API. Add to this list only
+  // public platform or documentation domains.
+  const allowed = [
+    'example.com', 'example.org', 'squarespace.com', 'shopify.com', 'myshopify.com', 'wordpress.com',
+    'wordpress.org', 'w.org', 'craftcms.com', 'github.com', 'claude.ai', 'claude.com', 'anthropic.com',
+  ];
+  const shipped = (dir) =>
+    readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
+      e.isDirectory() ? (e.name === 'test' ? [] : shipped(join(dir, e.name))) : /\.(md|mjs|js)$/.test(e.name) ? [join(dir, e.name)] : [],
+    );
+  for (const file of shipped(skillDir)) {
+    const hosts = readFileSync(file, 'utf8').match(/\b[a-z0-9-]+(\.[a-z0-9-]+)*\.(com|org|net|au|ca|io|edu|co|uk|nz|dev|app)\b/gi) ?? [];
+    for (const host of hosts) {
+      const h = host.toLowerCase();
+      assert.ok(allowed.some((a) => h === a || h.endsWith(`.${a}`)), `${file} names ${host}: use example.com instead`);
+    }
   }
 });

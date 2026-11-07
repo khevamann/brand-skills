@@ -113,7 +113,7 @@ function resolvePage(ref, index) {
   if (/^https?:\/\//.test(ref)) return ref;
   if (ref.startsWith('/')) return origin() + ref;
   const row = index?.pages.find((p) => p.id === ref || p.uri === ref.replace(/^\/+|\/+$/g, ''));
-  // An export id maps back to its path: `admissions--why-kirby` → /admissions/why-kirby.
+  // An export id maps back to its path: `about--why-choose-us` → /about/why-choose-us.
   return row?.url ?? `${origin()}/${ref === 'home' ? '' : ref.replace(/--/g, '/')}`;
 }
 

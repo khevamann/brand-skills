@@ -51,9 +51,9 @@ update them, and drop the sections.
 
 A note is a fact a future session would otherwise have to rediscover or ask again:
 
-- Shared content and its reach: "Pre-footer 5037 is shared by 7 pages — always ask."
+- Shared content and its reach: "Pre-footer 1234 is shared by 7 pages — always ask."
 - Decisions and standing rules from the user: "Copy fixes and design changes go in
-  separate rounds." "Never edit the Admissions page without asking Jo first."
+  separate rounds." "Never edit the Pricing page without asking the owner first."
 - Facts about the setup: "Admin is at /cms, not /admin." "Login lasts about a day."
 - Things that did not work, briefly, with a pointer to `learnings.md`.
 

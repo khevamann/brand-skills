@@ -110,12 +110,12 @@ test('resource hints are not treated as links', async () => {
 test('component demo pages are excluded from placeholder findings by default', async () => {
   const { isReferencePage } = await import('../core/audit.mjs');
   assert.equal(isReferencePage({ title: 'Style Guide', uri: 'style-guide' }), true);
-  assert.equal(isReferencePage({ title: 'Why Kirby?', uri: 'admissions/why-kirby' }), false);
+  assert.equal(isReferencePage({ title: 'Why Choose Us?', uri: 'about/why-choose-us' }), false);
 
   const lorem = { __typename: 'ds_RichTextBlock_Entry', id: '1', richText_Text: '<p>Lorem ipsum dolor sit.</p>' };
   const corpus = [
     { page: { ...page('1', 'style-guide'), title: 'Style Guide' }, blocks: [lorem] },
-    { page: page('2', 'admissions/why-kirby'), blocks: [lorem] },
+    { page: page('2', 'about/why-choose-us'), blocks: [lorem] },
   ];
   assert.deepEqual(findPlaceholders(corpus).map((f) => f.pageId), ['2']);
   assert.equal(findPlaceholders(corpus, null, { includeReferencePages: true }).length, 2);

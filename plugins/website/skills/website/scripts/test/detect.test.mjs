@@ -79,8 +79,8 @@ test('a bot-protection page is flagged', () => {
 });
 
 test('CMS host candidates include the split-host pattern used by headless Craft', () => {
-  const hosts = candidateCmsHosts('https://school-site.agencyhosting.com/', '<img src="https://img.cms.other.net/a.jpg">');
-  assert.ok(hosts.includes('school-site.agencyhosting.com'));
-  assert.ok(hosts.includes('school-site.cms.agencyhosting.com'));
+  const hosts = candidateCmsHosts('https://client-site.agencyhosting.com/', '<img src="https://img.cms.other.net/a.jpg">');
+  assert.ok(hosts.includes('client-site.agencyhosting.com'));
+  assert.ok(hosts.includes('client-site.cms.agencyhosting.com'));
   assert.ok(hosts.includes('img.cms.other.net'));
 });

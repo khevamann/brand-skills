@@ -6,10 +6,10 @@ the design work.
 
 This applies on every platform, with the same commands. Block refs and field names
 differ: on Craft's API a block is an entry id and a field a Craft handle
-(`5665` / `richText_Text`); read from the outside, a block is a section id or a
+(`1234` / `richText_Text`); read from the outside, a block is a section id or a
 generated ref and a field is named for what it is (`template--10__hero` /
 `text_Heading1`). The brief says which, and the manifest uses whatever the brief gave.
-The worked examples come from a Digistorm-built Craft school site.
+The worked examples come from an agency-built headless Craft site.
 
 From the outside, ask Claude Design to keep `data-ck-ref` and `data-ck-field` on every
 element it edits. Then `site diff <page> result.html` reads the edits straight back
@@ -34,7 +34,7 @@ Three hard constraints to state in any design brief:
   it is the block types the CMS defines, and nothing else renders. Anything outside them
   needs the site's developers: on Craft, a CMS change *and* a matching front-end
   component, neither reachable through the API.
-- **An embed block, if the site has one, is the escape hatch.** On the Digistorm site,
+- **An embed block, if the site has one, is the escape hatch.** On the example site,
   `ds_EmbedBlock`'s `embed_Code` stores raw HTML and injects it on hydration. Use it for
   a section the vocabulary cannot express. Client-side rendering makes it invisible to a
   static HTML snapshot and weaker for SEO.
@@ -43,7 +43,7 @@ Three hard constraints to state in any design brief:
   section in a template is shared by every page using it — the opposite problem.
 
 The design system's utility classes are usually already in the shipped CSS (on the
-Digistorm site: `surface-primary`, `top-spacing-md`, `container-wide`, plus Tailwind).
+example site: `surface-primary`, `top-spacing-md`, `container-wide`, plus Tailwind).
 Markup in an embed or rich-text field can reuse them and look native, if the rich-text
 field keeps classes — check existing content first.
 
@@ -59,13 +59,13 @@ block — which element was `tile_Heading` and which was `tile_TextOnHover`.
 
 ```json
 {
-  "pageId": "177",
+  "pageId": "101",
   "edits": [
-    { "blockId": "5665", "field": "richText_Text", "value": "<h5>New heading copy</h5>" },
-    { "blockId": "5666", "field": "tile_Heading", "value": "Intellectual Range" }
+    { "blockId": "1234", "field": "richText_Text", "value": "<h5>New heading copy</h5>" },
+    { "blockId": "1235", "field": "tile_Heading", "value": "Our Approach" }
   ],
   "newBlocks": [
-    { "afterBlockId": "6297", "type": "ds_EmbedBlock", "field": "embed_Code", "value": "<section>…</section>" }
+    { "afterBlockId": "1240", "type": "ds_EmbedBlock", "field": "embed_Code", "value": "<section>…</section>" }
   ],
   "unmapped": ["Changed the order of the stat tiles"]
 }

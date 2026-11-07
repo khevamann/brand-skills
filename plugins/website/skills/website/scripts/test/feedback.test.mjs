@@ -83,7 +83,7 @@ test('zip refuses names that escape the folder', () => {
 test('redact replaces emails and phone numbers', () => {
   const cases = [
     ['Write to jane.doe+web@example.co.uk today', 'Write to [email] today'],
-    ['office@school.org.', '[email].'],
+    ['office@example.org.', '[email].'],
     ['Call (555) 123-4567.', 'Call [phone].'],
     ['555-123-4567 or 555.123.4567 or 555 123 4567', '[phone] or [phone] or [phone]'],
     ['1-800-555-0199', '[phone]'],

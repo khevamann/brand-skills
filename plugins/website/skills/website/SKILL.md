@@ -1,6 +1,6 @@
 ---
 name: website
-description: Use for any work on a website the user looks after (Craft CMS, WordPress, Shopify, Squarespace, or anything else), and whenever the user names a site they are working on ("I'm working on example.com", or just a site address). Also for "/website setup", "set up the website skill", "update the website skill", "please use the website skill" and "/website feedback". Covers setting up or resuming a website project folder, working out what platform a site runs on, reading or exporting pages, finding where copy lives, auditing for placeholder copy, broken links and layout problems, extracting the design system, briefing Claude Design, checking how far a change reaches, and applying a change as a draft through the site's admin in the browser. Read-only: the scripts never change the site.
+description: Use for any work on a website the user looks after (Craft CMS, WordPress, Shopify, Squarespace, or anything else), and whenever the user names a site they are working on ("I'm working on example.com", or just a site address). Also for "/website setup", "set up the website skill", "update the website skill", "please use the website skill" and "/website feedback" or "send feedback on the website skill". Covers setting up or resuming a website project folder, working out what platform a site runs on, reading or exporting pages, finding where copy lives, auditing for placeholder copy, broken links and layout problems, extracting the design system, briefing Claude Design, checking how far a change reaches, and applying a change as a draft through the site's admin in the browser. Read-only: the scripts never change the site.
 ---
 
 # Website — read it, audit it, work out what to change
@@ -28,7 +28,7 @@ what to do next.
   checks everything and starts the first session. On an existing project, typically
   after the skill was updated, it brings the folder up to the current layout, says what
   changed, and lists any setup steps still missing; finish those.
-- **"/website feedback"**: bundle what this project learned for the skill author. See
+- **"/website feedback"**, "send feedback on the website skill": bundle what this project learned for the skill author. See
   "Feedback for the skill author" below.
 - **"I'm working on example.com"**, or just an address: `$SITE start example.com`. A
   new site goes through setup.
@@ -266,7 +266,7 @@ own standing rules ("keep copy fixes and design changes separate") go in
 `preferences.notes`. Nothing there can make you less careful than these rules.
 
 Good notes: "Pre-footer is shared by 7 pages — always ask." "Owner wants copy fixes and
-design changes kept separate." "Don't touch Admissions until the board signs off."
+design changes kept separate." "Don't touch the Pricing page until the owner signs off."
 
 Rules: date everything, mark anything unchecked as unverified, correct stale entries
 instead of adding contradictions, keep `SITE.md` under about 200 lines, and **never
@@ -433,7 +433,7 @@ default, and everything is written into the folder.
 - **Never fabricate an id, handle, or field name.** Read them from the site.
 - **An empty search is not proof a page is absent.** List and filter first.
 - **Quote exactly.** Give values verbatim; do not tidy silently.
-- **Name the field.** "The heading" is ambiguous; `#5665 richText_Text` or
+- **Name the field.** "The heading" is ambiguous; `#1234 richText_Text` or
   `template--10__hero text_Heading1` is not.
 - **Report a change as block → field → old value → new value.**
 - **If a command exits `BLOCKED`,** the request is a write. Say so; do not find a way

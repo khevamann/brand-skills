@@ -216,8 +216,6 @@ async function cmdInit(url, flags) {
       detection?.craftGraphql ||
       (await findCraftGraphql(target, '').catch(() => null));
     extra.craft = { graphql: graphql ?? null };
-    // Digistorm builds school sites from a demo; its sample name is placeholder copy.
-    if (/digistorm/i.test(`${target} ${graphql ?? ''}`)) extra.audit = { placeholders: ['Digistorm School'] };
   }
 
   const confirmedBy = flags['confirmed-by'] === 'user' ? 'user' : 'detection';

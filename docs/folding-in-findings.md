@@ -9,8 +9,7 @@ skill.
 
 For anything bigger than a findings file, such as a whole project folder, loose notes or
 a list of requests, use the repo skill `reviewing-field-reports`. It decides what is
-confirmed enough to change the skill, and keeps the evidence in
-[`field-evidence.md`](field-evidence.md).
+confirmed enough to change the skill, and keeps the evidence in a private ledger outside the repo.
 
 ## When a findings file arrives
 

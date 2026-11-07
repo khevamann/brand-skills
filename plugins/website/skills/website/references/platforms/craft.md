@@ -19,11 +19,11 @@ Every Craft site has its own content model — its own sections, entry types, bl
 and field handles. Never assume names from the example below; read them with
 `site sections`, `site blocks` and `site schema <Type>`.
 
-## Worked example: a Digistorm school site
+## Worked example: an agency-built headless Craft site
 
-Everything from here on was observed on one Digistorm-built Craft 5 school site
-(Kirby, 2026-09-30). Digistorm builds to a house pattern, so their other sites likely
-match; other Craft sites will not. Re-check before relying on it:
+Everything from here on was observed on one agency-built, headless Craft 5 site
+(2026-09). Agencies often build every client site from the same house template, so
+their other sites may match; other Craft sites will not. Re-check before relying on it:
 `site sections`, then `site query --q '{ entry(id: <id>) { __typename } }'`.
 
 It is **Craft 5**. Entry type object names have no section prefix
@@ -59,7 +59,7 @@ A page holds almost no content of its own. `ds_StandardPage_Entry` has:
 ```
 ds_StandardPage_Entry
 └── contentBuilder
-    ├── ds_LayoutBlock_Entry          "Why Families Choose Kirby"
+    ├── ds_LayoutBlock_Entry          "Why Choose Us"
     │   └── layout_contentBuilder
     │       ├── ds_RichTextLayoutBlock_Entry   → richText_Text (HTML)
     │       └── ds_TileLayoutBlock_Entry       → tile_Heading / tile_TextOnHover
@@ -106,14 +106,14 @@ text field and nothing else.
 - **SEOmatic breaks whole-type selections.** `seomatic` is declared `String` but
   returns a `MetaBundle` object. `site entry` tolerates this and warns.
 - **The site's `url` host differs from the CMS host.** Content is served from
-  `*.digistormhosting.com.au`; the control panel and GraphQL endpoint are at
-  `*.cms.digistormhosting.com.au`. Detection finds this split by itself.
+  `<site>.<agency-host>`; the control panel and GraphQL endpoint are at
+  `<site>.cms.<agency-host>`. Detection finds this split by itself.
 - **The endpoint answers at `/api` and under the CP trigger at
   `/admin/actions/graphql/api`.** The commonly documented `/actions/graphql/api` does
   not work there.
-- **Digistorm's demo copy** — "Digistorm School" — is left behind on new sites. Setting
-  up a project for a Digistorm-hosted site adds it to the audit's placeholder list in
-  `site.yaml` (`audit.placeholders`); add other sites' demo names there the same way.
+- **The template's demo copy** (the agency's sample organisation name) was left behind
+  on the live site. Add a demo name like that to the audit's placeholder list in
+  `site.yaml` (`audit.placeholders`), and the audit flags every page that still has it.
 - **The public schema is enabled and read-only** — 208 entries readable with no token,
   and `ping` is the only mutation. Verified with no `Authorization` header at all.
 - **Disabled entries and drafts are publicly readable.** `status: null` and
@@ -123,17 +123,17 @@ text field and nothing else.
 ## Worked example — reading a page
 
 ```bash
-site entries --search "why kirby" --status all     # search index may be empty; fall back to:
+site entries --search "why choose us" --status all   # search index may be empty; fall back to:
 site query --q '{ entries(status: null, limit: 300) { id title uri sectionHandle } }'
-site page 177                                      # the copy, nesting walked for you
-site page 177 --raw                                # same as JSON, plus the query used
+site page 101                                        # the copy, nesting walked for you
+site page 101 --raw                                  # same as JSON, plus the query used
 ```
 
 `site page` builds the two-level fragment query itself by introspecting the block
 types, so the field-name inconsistencies above do not matter when reading.
 
-The search index on the test site returned nothing for `why kirby` while the page
-existed at `admissions/why-kirby`. If a search comes back empty, list and filter
+The search index on the test site returned nothing for `why choose us` while the page
+existed at `about/why-choose-us`. If a search comes back empty, list and filter
 rather than concluding the page is absent.
 
 ## First-time checklist
