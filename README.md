@@ -26,17 +26,33 @@ so Claude can walk them through any step that goes wrong.
 **You'll need:** the Claude desktop app with Cowork, your website's address, and your
 login for your website's editor.
 
-1. **Let Claude run code.** Open **Settings → Capabilities** and turn on **Code execution
-   and file creation**.
-2. **Let Claude reach your website.** On the same page, allow network access for your
-   site's address (for example `example.com`). On a Team or Enterprise plan, ask whoever
-   manages Claude for your organization to allow it. If you can't, carry on: Claude can
-   work through the browser instead.
-3. **Install the skill.** Open **Customize → Plugins**, choose **Add marketplace** (it
-   may be under **Add**) and enter `khevamann/brand-skills`. Find **website**, click
-   **Install**, and turn on **Sync automatically** for the marketplace so updates arrive
-   by themselves. On a Team or Enterprise plan, an Owner may first need to allow it
-   under **Organization settings → Plugins & skills → Policy → User-created skills**.
+1. **Let Claude run code (required).** Open **Settings → Capabilities** and turn on
+   **Code execution and file creation**. Skills only run with it on, and the skill's tools
+   need it.
+   - *Can't turn it on?* On a Team or Enterprise plan only an Owner can. Ask whoever
+     manages Claude for your organization to turn it on for you. There is no way around
+     this one: without it the skill can't run.
+2. **Let Claude reach your website (recommended).** On the same page, allow network
+   access for your site's address, for example `example.com`.
+   - *Can't allow it?* On a Team or Enterprise plan an Owner allows it under
+     **Organization settings → Capabilities → Code execution** (network access, add the
+     site's address). If that isn't possible, carry on: Claude reads your site through
+     the browser instead. Everything still works, but the first session is slower.
+3. **Install the skill.** Use the first way that works for you:
+   - **A. From GitHub (best: updates itself).** Open **Customize → Plugins**, choose
+     **Add marketplace** (it may be under **Add**) and enter `khevamann/brand-skills`.
+     Find **website**, click **Install**, and turn on **Sync automatically** for the
+     marketplace.
+   - **B. From the zip** (if you can't add a marketplace). Download `website-skill.zip`
+     from the [latest release](https://github.com/khevamann/brand-skills/releases/latest)
+     under **Assets** (not "Source code (zip)"). Open **Customize → Skills**, click
+     **+**, choose **Create skill → Upload a skill**, and pick the zip without unzipping
+     it. Check that **website** is in the list with its switch on.
+   - **C. Through your organization** (if neither option shows up, which is common on a
+     managed Team or Enterprise account). Ask an Owner to either turn on **User-created
+     skills** under **Organization settings → Plugins & skills → Policy**, so you can
+     use A or B, or upload `website-skill.zip` for the organization themselves under
+     **Organization settings → Plugins & skills** and make it available to you.
 4. **Make an empty folder** on your computer for the website, for example
    `Documents/Websites/Acme website`. One folder per site.
 5. **Make a Cowork project** for the site (for example "Acme Website") and **attach that
@@ -64,12 +80,9 @@ remembers your site.
   Claude bundles what it learned and your conversations into one zip, with email
   addresses and phone numbers removed, to send to the skill author.
 
-**Without the marketplace.** If you can't add a marketplace, download
-`website-skill.zip` from the [latest release](https://github.com/khevamann/brand-skills/releases/latest)
-under **Assets** (not "Source code (zip)", which Claude rejects). Then open **Customize →
-Skills**, click **+**, choose **Create skill → Upload a skill**, and pick the zip without
-unzipping it. A zip doesn't update itself: to update, delete the old skill and upload the
-new zip.
+**Installed from the zip (B or C)?** It doesn't update itself. To update, delete the old
+**website** skill (or ask the Owner to replace it), upload the new zip from the latest
+release, then say "Update the website skill" in each site's project.
 
 ## Setup in detail
 

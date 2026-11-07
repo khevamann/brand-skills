@@ -10,40 +10,60 @@ same steps.
 - The **address of your website** (for example `example.com`), and a way to **sign in to
   its editor**: your Squarespace, WordPress, Shopify or Craft login.
 
-## 1. Let Claude run code
+## 1. Let Claude run code (required)
 
 Open **Settings → Capabilities** and turn on **Code execution and file creation**.
+Skills only run with it on, and the skill's tools need it.
 
-✓ The switch is on. On a Team or Enterprise plan, if you can't change it, ask whoever
-manages Claude for your organization (an Owner) to turn it on. They may also need to
-allow you to add plugins: **Organization settings → Plugins & skills → Policy → User-created
-skills**.
+✓ The switch is on.
 
-## 2. Let Claude reach your website
+**Can't turn it on?** On a Team or Enterprise plan only an Owner can. Ask whoever
+manages Claude for your organization to turn it on for you. There is no way around this
+one: without it the skill can't run at all.
+
+## 2. Let Claude reach your website (recommended)
 
 On the same Capabilities page, allow network access for your website's address, for
-example `example.com`. On a Team or Enterprise plan only an Owner can do this, under
-**Organization settings → Capabilities → Code execution**: turn on network access and
-add the site's address.
+example `example.com`.
 
-✓ Your site's address is in the list of allowed sites. If you can't do this, carry on:
-Claude asks again at the start, and can do the same work through the browser, more
-slowly.
+✓ Your site's address is in the list of allowed sites.
+
+**Can't allow it?** On a Team or Enterprise plan only an Owner can, under
+**Organization settings → Capabilities → Code execution**: turn on network access and
+add the site's address. If that isn't possible, carry on. Claude reads your site through
+the browser instead: everything still works, but the first session is slower.
 
 ## 3. Install the skill
+
+Use the first way that works for you.
+
+**A. From GitHub (best, because it updates itself).**
 
 1. Open **Customize** in the sidebar, then **Plugins**.
 2. Choose **Add marketplace** (it may be under **Add**), and enter
    `khevamann/brand-skills`.
 3. Find **website** in the list and click **Install**.
-4. Turn on **Sync automatically** for the brand-skills marketplace, so you always have
-   the latest version.
+4. Turn on **Sync automatically** for the brand-skills marketplace.
 
 ✓ **website** shows as installed under **Customize → Plugins**.
 
-**If you were sent `website-skill.zip` instead:** open **Customize → Skills**, click
-**+**, then **Create skill → Upload a skill**, and choose the zip without unzipping it.
+**B. From the zip, if you can't add a marketplace.**
+
+1. Download `website-skill.zip` from the latest release at
+   `github.com/khevamann/brand-skills/releases/latest`, under **Assets** (not "Source
+   code (zip)", which Claude rejects).
+2. Open **Customize → Skills**, click **+**, then **Create skill → Upload a skill**, and
+   choose the zip without unzipping it.
+
 ✓ **website** is in your list of skills, with its switch on.
+
+**C. Through your organization, if neither A nor B shows up.** This is common on a
+managed Team or Enterprise account. Ask an Owner to either:
+
+- turn on **User-created skills** under **Organization settings → Plugins & skills →
+  Policy**, so you can use A or B; or
+- upload `website-skill.zip` for the organization themselves, under **Organization
+  settings → Plugins & skills**, and make it available to you.
 
 ## 4. Make a folder for the site
 
@@ -93,10 +113,10 @@ In the Cowork project, **start a new chat** and type:
 
 - **Always start new chats inside that same Cowork project.** That's how Claude
   remembers your site. Just say what you'd like to do.
-- **When there's a new version of the skill**, it arrives by itself if **Sync
-  automatically** is on (or choose **Check for updates** on the marketplace). If you
-  installed from a zip, delete the old **website** skill in **Customize → Skills** and
-  upload the new zip. Then, in your site's project, say "**Update the website skill**".
+- **When there's a new version of the skill**, it arrives by itself if you used A and
+  **Sync automatically** is on (or choose **Check for updates** on the marketplace). With
+  B, delete the old **website** skill in **Customize → Skills** and upload the new zip.
+  With C, ask the Owner to replace it. Then, in your site's project, say "**Update the website skill**".
   Claude brings your folder up to date and finishes anything new.
 - **To send feedback**, say "**Send feedback on the website skill**" (or
   `/website feedback`). Claude bundles what it has learned
@@ -110,5 +130,7 @@ In the Cowork project, **start a new chat** and type:
 | Claude says this isn't a Cowork project, or there's no folder | Do steps 4 and 5, then start a new chat in that project |
 | Claude can't reach your site | Do step 2, or let Claude carry on through the browser |
 | Claude has no browser | Do step 6 |
-| You can't add the marketplace or upload the skill | Step 1 is probably off, or your organization hasn't allowed it |
+| No **Add marketplace** option | Use B in step 3 |
+| You can't upload the skill either | Step 1 is probably off, or your organization hasn't allowed it: use C in step 3 |
+| Code execution can't be turned on | Only an Owner can turn it on (step 1); the skill can't run without it |
 | Claude doesn't seem to know the skill | Check step 3, then say "Set up the website skill" |
